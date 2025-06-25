@@ -1,0 +1,13 @@
+24-Route::delete('/qr-codes/{qrCode}', [QrCodeController::class, 'destroy'])->middleware(['auth'])->name('qr-codes.destroy');
+25-
+26:// Wall routes
+27-Route::middleware(['auth'])->group(function () {
+28-    Route::get('/wall', [WallController::class, 'index'])->name('wall.index');
+29-    Route::post('/wall', [WallController::class, 'store'])->name('wall.store');
+30-    Route::get('/wall/posts', [WallController::class, 'getPosts'])->name('wall.posts');
+31-    Route::get('/wall/{post}', [WallController::class, 'show'])->name('wall.show');
+32-    Route::delete('/wall/{post}', [WallController::class, 'destroy'])->name('wall.destroy');
+33-});
+34-
+35-// Design Management routes
+36-Route::middleware(['auth'])->group(function () {
