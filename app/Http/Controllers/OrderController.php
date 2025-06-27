@@ -97,10 +97,11 @@ class OrderController extends Controller
         // Get user's preferred location from profile, fallback to request parameter
         $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
         
-        // Get T-shirt products - use the type field directly instead of metadata
+        // Get only T-shirt products, limited to 20 for better performance
         $products = Product::where('type', 'T-shirt')
+            ->where('is_active', true)
             ->orderBy('name')
-            ->take(12)
+            ->take(20)
             ->get();
 
         // Extract unique types, sizes, and colors from products for filters
