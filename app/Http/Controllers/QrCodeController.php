@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class QrCodeController extends Controller
 {
@@ -38,78 +40,55 @@ class QrCodeController extends Controller
     public function generate(Request $request)
     {
         $request->validate([
-            'text' => 'required|string|max:1000',
-            'size' => 'integer|min:100|max:4000',
-            'color' => 'string|regex:/^#[0-9A-F]{6}$/i',
-            'background' => 'string|regex:/^#[0-9A-F]{6}$/i',
-            'name' => 'nullable|string|max:255',
+            'content' => 'required|string|max:1000',
+            'size' => 'required|in:200,300,400',
+            'qr_color' => 'required|string|regex:/^#[0-9A-F]{6}$/i',
+            'background_color' => 'required|string|regex:/^#[0-9A-F]{6}$/i',
         ]);
 
-        $user = Auth::user();
-        
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You must be logged in to save QR codes.'
-            ], 401);
-        }
-
-        // Check user limits
-        $qrCodeCount = QrCodeModel::where('user_id', $user->id)->count();
-        $maxQrCodes = $user->getQrCodeLimit();
-        
-        if ($qrCodeCount >= $maxQrCodes) {
-            $message = match($user->user_type) {
-                'partner' => 'You have reached the maximum number of QR codes.',
-                'premium' => 'You have reached the limit of 20 QR codes. Upgrade to Partner for unlimited QR codes.',
-                'free' => 'Free users can only create 1 QR code. Upgrade to Premium for 20 QR codes or Partner for unlimited QR codes.',
-                default => 'You have reached the maximum number of QR codes.'
-            };
+        try {
+            $user = auth()->user();
             
+            // Generate QR code
+            $qrCode = QrCodeModel::create([
+                'user_id' => $user->id,
+                'name' => 'QR Code ' . now()->format('Y-m-d H:i:s'),
+                'content' => $request->content,
+                'size' => $request->size,
+                'qr_color' => $request->qr_color,
+                'background_color' => $request->background_color,
+            ]);
+
+            // Generate the QR code image
+            $qrCodeImage = QrCode::format('svg')
+                ->size($request->size)
+                ->color($request->qr_color)
+                ->backgroundColor($request->background_color)
+                ->generate($request->content);
+
+            // Save the QR code image
+            $filename = $user->id . '_' . time() . '_' . Str::random(12) . '.svg';
+            $path = 'qr-codes/' . $filename;
+            
+            Storage::disk('public')->put($path, $qrCodeImage);
+            
+            // Update the QR code with the file path
+            $qrCode->update(['file_path' => $path]);
+
+            // Return the image with CORS headers
+            return response($qrCodeImage)
+                ->header('Content-Type', 'image/svg+xml')
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type');
+
+        } catch (\Exception $e) {
+            Log::error('QR Code generation failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => $message
-            ], 403);
+                'message' => 'Failed to generate QR code. Please try again.'
+            ], 500);
         }
-
-        $text = $request->input('text');
-        $size = $request->input('size', 4000);
-        $color = $this->hexToRgb($request->input('color', '#000000'));
-        $background = $this->hexToRgb($request->input('background', '#FFFFFF'));
-        $name = $request->input('name', 'QR Code ' . ($qrCodeCount + 1));
-
-        // Create QR code record
-        $qrCode = QrCodeModel::create([
-            'user_id' => $user->id,
-            'name' => $name,
-            'content' => $text,
-            'size' => $size,
-            'color' => $request->input('color', '#000000'),
-            'background_color' => $request->input('background', '#FFFFFF'),
-            'format' => 'svg',
-        ]);
-
-        // Generate QR code image
-        $qrCodeImage = QrCode::size($size)
-            ->color($color[0], $color[1], $color[2])
-            ->backgroundColor($background[0], $background[1], $background[2])
-            ->format('svg')
-            ->generate($text);
-
-        // Save file to storage
-        $filename = $qrCode->generateFilename();
-        Storage::disk('public')->put($filename, $qrCodeImage);
-        
-        // Update QR code with file path
-        $qrCode->update(['file_path' => $filename]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'QR code saved successfully!',
-            'qr_code' => $qrCode->load('user'),
-            'file_url' => $qrCode->file_url,
-            'data_url' => 'data:image/svg+xml;base64,' . base64_encode($qrCodeImage)
-        ]);
     }
 
     /**

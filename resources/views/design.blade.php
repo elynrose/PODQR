@@ -1233,17 +1233,27 @@
             var backDesignImage = null;
             
             if (typeof canvas_front !== 'undefined') {
-                frontDesignImage = canvas_front.toDataURL({
-                    format: 'png', 
-                    multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
-                });
+                try {
+                    frontDesignImage = canvas_front.toDataURL({
+                        format: 'png', 
+                        multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
+                    });
+                } catch (error) {
+                    console.warn('Front canvas toDataURL failed (possibly due to CORS):', error);
+                    // Continue without front design image
+                }
             }
             
             if (typeof canvas_back !== 'undefined') {
-                backDesignImage = canvas_back.toDataURL({
-                    format: 'png', 
-                    multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
-                });
+                try {
+                    backDesignImage = canvas_back.toDataURL({
+                        format: 'png', 
+                        multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
+                    });
+                } catch (error) {
+                    console.warn('Back canvas toDataURL failed (possibly due to CORS):', error);
+                    // Continue without back design image
+                }
             }
             
             // Prepare form data
@@ -1299,7 +1309,14 @@
                         mergeImages([
                           { src: shirtImgElem.src, x: 0, y: 0 },
                           { 
-                            src: canvas_front.toDataURL({ format: 'png', multiplier: multiplier }),
+                            src: (function() {
+                                try {
+                                    return canvas_front.toDataURL({ format: 'png', multiplier: multiplier });
+                                } catch (error) {
+                                    console.warn('Canvas toDataURL failed for cover image:', error);
+                                    return null;
+                                }
+                            })(),
                             x: shirtBoxX,
                             y: shirtBoxY
                           }
@@ -1310,6 +1327,7 @@
                             formData.cover_image_data = b64;
                             sendSaveRequest(formData);
                         }).catch(function(error) {
+                            console.warn('Merge images failed:', error);
                             sendSaveRequest(formData);
                         });
                     } catch (error) {

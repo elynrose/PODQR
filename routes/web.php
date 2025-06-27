@@ -11,6 +11,7 @@ use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\DalleController;
+use Illuminate\Support\Facades\Storage;
 
 // Public routes
 Route::get('/', function () {
@@ -30,6 +31,20 @@ Route::post('/qr-generate-data-url', [QrCodeController::class, 'generateDataUrl'
 Route::post('/qr-generate-and-save', [QrCodeController::class, 'generateAndSaveFromDesigner'])->middleware(['auth'])->name('qr-generate-and-save');
 Route::post('/qr-save-and-design', [QrCodeController::class, 'saveAndDesign'])->middleware(['auth'])->name('qr-save-and-design');
 Route::delete('/qr-codes/{qrCode}', [QrCodeController::class, 'destroy'])->middleware(['auth'])->name('qr-codes.destroy');
+
+// Serve QR code images with CORS headers
+Route::get('/qr-codes/{filename}', function ($filename) {
+    $path = 'qr-codes/' . $filename;
+    if (Storage::disk('public')->exists($path)) {
+        $content = Storage::disk('public')->get($path);
+        return response($content)
+            ->header('Content-Type', 'image/svg+xml')
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type');
+    }
+    abort(404);
+})->where('filename', '.*');
 
 // Personal Wall routes
 Route::middleware(['auth'])->group(function () {
