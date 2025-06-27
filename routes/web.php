@@ -133,4 +133,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dalle/generate', [DalleController::class, 'generateImage'])->name('dalle.generate');
 });
 
+// Debug route for testing navigation
+Route::get('/debug-nav', function () {
+    return view('debug-nav');
+})->middleware(['auth'])->name('debug.nav');
+
 require __DIR__.'/auth.php';

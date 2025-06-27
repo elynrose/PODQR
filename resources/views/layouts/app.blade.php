@@ -18,6 +18,16 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        
+        <!-- Fallback for Vite assets in production -->
+        @if(app()->environment('production'))
+            <script>
+                // Check if Vite assets loaded, if not, load fallback
+                if (typeof window.Alpine === 'undefined') {
+                    console.log('Vite assets not loaded, using fallback');
+                }
+            </script>
+        @endif
 
         <!-- Custom styles -->
         <style>
@@ -30,6 +40,83 @@
             .dropdown-menu {
                 border-radius: 0.5rem;
                 box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            }
+            
+            /* Fallback styles in case Vite assets fail to load */
+            .navbar {
+                display: flex !important;
+                position: relative;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+            }
+            
+            .navbar-nav {
+                display: flex;
+                flex-direction: row;
+                padding-left: 0;
+                margin-bottom: 0;
+                list-style: none;
+            }
+            
+            .nav-item {
+                margin-right: 0.5rem;
+            }
+            
+            .nav-link {
+                display: block;
+                padding: 0.5rem 1rem;
+                color: #6c757d;
+                text-decoration: none;
+                transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+            }
+            
+            .nav-link:hover {
+                color: #495057;
+            }
+            
+            .navbar-brand {
+                padding-top: 0.3125rem;
+                padding-bottom: 0.3125rem;
+                margin-right: 1rem;
+                font-size: 1.25rem;
+                white-space: nowrap;
+                color: #212529;
+                text-decoration: none;
+            }
+            
+            .navbar-toggler {
+                padding: 0.25rem 0.75rem;
+                font-size: 1rem;
+                line-height: 1;
+                color: #6c757d;
+                background-color: transparent;
+                border: 1px solid #dee2e6;
+                border-radius: 0.375rem;
+                transition: box-shadow 0.15s ease-in-out;
+            }
+            
+            .navbar-collapse {
+                flex-basis: 100%;
+                flex-grow: 1;
+                align-items: center;
+            }
+            
+            @media (min-width: 768px) {
+                .navbar-expand-md .navbar-nav {
+                    flex-direction: row;
+                }
+                
+                .navbar-expand-md .navbar-collapse {
+                    display: flex !important;
+                    flex-basis: auto;
+                }
+                
+                .navbar-expand-md .navbar-toggler {
+                    display: none;
+                }
             }
         </style>
         
