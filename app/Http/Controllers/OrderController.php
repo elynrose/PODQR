@@ -1541,4 +1541,38 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Test Printful products endpoint
+     */
+    public function testPrintfulProducts()
+    {
+        try {
+            \Log::info('Testing Printful products directly');
+            
+            // Test the getTshirtProducts method
+            $products = $this->printfulService->getTshirtProducts(5);
+            
+            \Log::info('Printful products test result', [
+                'products_count' => $products->count(),
+                'products' => $products->toArray()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'products_count' => $products->count(),
+                'products' => $products->toArray(),
+                'api_key_length' => strlen(config('services.printful.api_key') ?? ''),
+                'store_id' => config('services.printful.store_id')
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Printful products test error: ' . $e->getMessage());
+            return response()->json([
+                'error' => $e->getMessage(),
+                'type' => 'products_error',
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
 }

@@ -501,7 +501,8 @@ class PrintfulService
                 'limit' => $limit,
                 'offset' => $offset,
                 'api_key_length' => strlen($this->apiKey ?? ''),
-                'store_id' => $this->storeId
+                'store_id' => $this->storeId,
+                'api_key_preview' => substr($this->apiKey ?? '', 0, 10) . '...'
             ]);
 
             // Get products from catalog with pagination
@@ -516,11 +517,13 @@ class PrintfulService
                 'status_code' => $response->status(),
                 'response_body_length' => strlen($response->body()),
                 'request_limit' => 50,
-                'request_offset' => $offset
+                'request_offset' => $offset,
+                'response_preview' => substr($response->body(), 0, 500) . '...'
             ]);
 
             if (!$response->successful()) {
                 Log::error('Printful Catalog API Error: ' . $response->body());
+                \Log::warning('PrintfulService: API failed, returning fallback products');
                 return $this->getFallbackProducts($limit);
             }
 
@@ -529,7 +532,8 @@ class PrintfulService
 
             \Log::info('PrintfulService: Raw products data', [
                 'total_products' => $products->count(),
-                'first_product' => $products->first()
+                'first_product' => $products->first(),
+                'product_names' => $products->pluck('name')->take(5)->toArray()
             ]);
 
             // Filter for T-shirt products with more inclusive criteria
@@ -565,7 +569,8 @@ class PrintfulService
 
             \Log::info('PrintfulService: T-shirt products filtered', [
                 'tshirt_products_count' => $tshirtProducts->count(),
-                'total_products_checked' => $products->count()
+                'total_products_checked' => $products->count(),
+                'tshirt_product_names' => $tshirtProducts->pluck('name')->toArray()
             ]);
 
             // If no T-shirt products found, log all products for debugging
@@ -602,7 +607,8 @@ class PrintfulService
                 });
                 
                 \Log::warning('PrintfulService: Returning debug products instead of fallback', [
-                    'debug_products_count' => $debugProducts->count()
+                    'debug_products_count' => $debugProducts->count(),
+                    'debug_product_names' => $debugProducts->pluck('name')->toArray()
                 ]);
                 
                 return $debugProducts;
@@ -630,7 +636,9 @@ class PrintfulService
                 
                 \Log::info('PrintfulService: Formatted product', [
                     'product_id' => $product['id'],
+                    'product_name' => $product['name'],
                     'variants_count' => count($variants),
+                    'image_url' => $product['image'] ?? 'null',
                     'formatted' => $formatted
                 ]);
                 
@@ -642,7 +650,8 @@ class PrintfulService
                 'tshirt_products' => $tshirtProducts->count(),
                 'formatted_products' => $formattedProducts->count(),
                 'limit' => $limit,
-                'offset' => $offset
+                'offset' => $offset,
+                'final_product_names' => $formattedProducts->pluck('name')->toArray()
             ]);
 
             return $formattedProducts;
@@ -651,6 +660,7 @@ class PrintfulService
             Log::error('Printful T-shirt products fetch error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
+            \Log::warning('PrintfulService: Exception occurred, returning fallback products');
             return $this->getFallbackProducts($limit);
         }
     }
