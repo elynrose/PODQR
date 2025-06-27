@@ -43,12 +43,20 @@ class SeedTestDesigns extends Command
             return;
         }
 
+        // Get first shirt size
+        $shirtSize = \App\Models\ShirtSize::first();
+        if (!$shirtSize) {
+            $this->error('No shirt sizes found. Please run shirt size seeder first.');
+            return;
+        }
+
         $designs = [
             [
                 'name' => 'Test Design 1',
                 'description' => 'A test design for ordering',
                 'user_id' => $user->id,
                 'clothes_type_id' => $clothesType->id,
+                'shirt_size_id' => $shirtSize->id,
                 'color_code' => '#ff0000',
                 'status' => 'published',
                 'is_public' => true,
@@ -58,6 +66,7 @@ class SeedTestDesigns extends Command
                 'description' => 'Another test design for ordering',
                 'user_id' => $user->id,
                 'clothes_type_id' => $clothesType->id,
+                'shirt_size_id' => $shirtSize->id,
                 'color_code' => '#0000ff',
                 'status' => 'published',
                 'is_public' => true,
@@ -67,6 +76,7 @@ class SeedTestDesigns extends Command
                 'description' => 'Third test design for ordering',
                 'user_id' => $user->id,
                 'clothes_type_id' => $clothesType->id,
+                'shirt_size_id' => $shirtSize->id,
                 'color_code' => '#00ff00',
                 'status' => 'published',
                 'is_public' => true,
