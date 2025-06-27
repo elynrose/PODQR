@@ -1444,8 +1444,8 @@ class OrderController extends Controller
         try {
             \Log::info('Testing Printful API directly');
             
-            // Test basic API connection
-            $response = Http::withHeaders([
+            // Test basic API connection with shorter timeout
+            $response = Http::timeout(15)->withHeaders([
                 'Authorization' => 'Bearer ' . config('services.printful.api_key'),
             ])->get('https://api.printful.com/catalog/products');
 
@@ -1458,13 +1458,23 @@ class OrderController extends Controller
                 'status_code' => $response->status(),
                 'response_body' => $response->json(),
                 'api_key_length' => strlen(config('services.printful.api_key') ?? ''),
-                'store_id' => config('services.printful.store_id')
+                'store_id' => config('services.printful.store_id'),
+                'timeout_used' => 15
             ]);
             
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            \Log::error('Direct API test connection error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Connection timeout or network error: ' . $e->getMessage(),
+                'type' => 'connection_error',
+                'api_key_length' => strlen(config('services.printful.api_key') ?? ''),
+                'store_id' => config('services.printful.store_id')
+            ], 408);
         } catch (\Exception $e) {
             \Log::error('Direct API test error: ' . $e->getMessage());
             return response()->json([
                 'error' => $e->getMessage(),
+                'type' => 'general_error',
                 'trace' => $e->getTraceAsString()
             ], 500);
         }

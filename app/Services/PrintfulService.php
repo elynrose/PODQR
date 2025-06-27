@@ -503,8 +503,8 @@ class PrintfulService
                 'store_id' => $this->storeId
             ]);
 
-            // Get all products from catalog
-            $response = Http::withHeaders([
+            // Get all products from catalog with timeout
+            $response = Http::timeout(30)->withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
             ])->get($this->baseUrl . '/catalog/products');
 
@@ -516,7 +516,7 @@ class PrintfulService
 
             if (!$response->successful()) {
                 Log::error('Printful Catalog API Error: ' . $response->body());
-                return collect();
+                return $this->getFallbackProducts($limit);
             }
 
             $data = $response->json();
@@ -550,6 +550,12 @@ class PrintfulService
             \Log::info('PrintfulService: T-shirt products filtered', [
                 'tshirt_products_count' => $tshirtProducts->count()
             ]);
+
+            // If no T-shirt products found, return fallback
+            if ($tshirtProducts->isEmpty()) {
+                \Log::warning('PrintfulService: No T-shirt products found, using fallback');
+                return $this->getFallbackProducts($limit);
+            }
 
             // Transform to our format
             $formattedProducts = $tshirtProducts->map(function ($product) {
@@ -588,8 +594,75 @@ class PrintfulService
             Log::error('Printful T-shirt products fetch error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
-            return collect();
+            return $this->getFallbackProducts($limit);
         }
+    }
+
+    /**
+     * Get fallback products when Printful API fails
+     */
+    private function getFallbackProducts($limit = 20)
+    {
+        \Log::info('PrintfulService: Using fallback products', ['limit' => $limit]);
+        
+        return collect([
+            [
+                'printful_id' => 'fallback-1',
+                'printful_product_id' => 'fallback-1',
+                'name' => 'Classic T-Shirt',
+                'description' => 'Premium cotton T-shirt with custom design',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Classic',
+                'base_price' => 19.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Navy', 'color_codes' => ['#000080']],
+                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
+                ],
+            ],
+            [
+                'printful_id' => 'fallback-2',
+                'printful_product_id' => 'fallback-2',
+                'name' => 'Premium T-Shirt',
+                'description' => 'High-quality cotton T-shirt',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Premium',
+                'base_price' => 24.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['S', 'M', 'L', 'XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Red', 'color_codes' => ['#ff0000']],
+                    ['color_name' => 'Blue', 'color_codes' => ['#0000ff']],
+                ],
+            ],
+            [
+                'printful_id' => 'fallback-3',
+                'printful_product_id' => 'fallback-3',
+                'name' => 'Slim Fit T-Shirt',
+                'description' => 'Modern slim fit T-shirt',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Slim Fit',
+                'base_price' => 22.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['S', 'M', 'L', 'XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
+                ],
+            ]
+        ])->take($limit);
     }
 
     /**
