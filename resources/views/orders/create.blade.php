@@ -1,12 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2 class="h4 mb-0 text-gray-800">
-                Order Products
-            </h2>
-        </div>
-    </x-slot>
+@extends('layouts.app')
 
+@section('content')
     <div class="container-fluid py-4">
         <!-- Error Messages -->
         @if(session('error'))
@@ -87,7 +81,7 @@
                                                         <option value="AU" {{ $userLocation == 'AU' ? 'selected' : '' }}>Australia</option>
                                                     </select>
                                                     <small class="text-muted">Products will be filtered based on your location</small>
-                                                    @if(!auth()->user()->country_code)
+                                                    @if(auth()->check() && !auth()->user()->country_code)
                                                         <div class="alert alert-info mt-2">
                                                             <small>
                                                                 <i class="fas fa-info-circle"></i>
@@ -887,4 +881,4 @@
     });
     </script>
     @endpush
-</x-app-layout> 
+@endsection 

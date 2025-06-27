@@ -137,7 +137,10 @@
 
             <!-- Page Content -->
             <main class="content-wrapper py-4">
-                {{ $slot }}
+                @yield('content')
+                @isset($slot)
+                    {{ $slot }}
+                @endisset
             </main>
         </div>
 
