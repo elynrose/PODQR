@@ -603,13 +603,13 @@ class PrintfulService
                 $formatted = [
                     'printful_id' => $product['id'],
                     'printful_product_id' => $product['id'],
-                    'name' => $product['name'],
+                    'name' => $product['display_name'] ?? $product['name'] ?? 'Unknown Product',
                     'description' => $product['description'] ?? '',
                     'type' => 'T-SHIRT',
                     'brand' => $product['brand'] ?? 'Unknown',
                     'model' => $product['model'] ?? '',
-                    'base_price' => 19.99, // Default price instead of fetching variants
-                    'image_url' => $product['image'] ?? null,
+                    'base_price' => $product['price'] ?? 19.99, // Use API price if available
+                    'image_url' => $product['image_url'] ?? null,
                     'is_active' => true,
                     'sizes' => ['S', 'M', 'L', 'XL'], // Default sizes
                     'colors' => [
@@ -620,8 +620,9 @@ class PrintfulService
                 
                 \Log::info('PrintfulService: Formatted product', [
                     'product_id' => $product['id'],
-                    'product_name' => $product['name'],
-                    'image_url' => $product['image'] ?? 'null'
+                    'product_name' => $formatted['name'],
+                    'image_url' => $formatted['image_url'] ?? 'null',
+                    'price' => $formatted['base_price']
                 ]);
                 
                 return $formatted;
