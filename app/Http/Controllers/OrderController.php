@@ -99,7 +99,8 @@ class OrderController extends Controller
             $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
             
             // Get only T-shirt products, limited to 20 for better performance
-            $products = Product::where('type', 'T-shirt')
+            // Note: Printful uses "T-SHIRT" (uppercase) for the type
+            $products = Product::where('type', 'T-SHIRT')
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->take(20)
@@ -111,10 +112,10 @@ class OrderController extends Controller
             $colors = collect();
             
             foreach ($products as $product) {
-                if ($product->sizes) {
+                if ($product->sizes && is_array($product->sizes)) {
                     $sizes = $sizes->merge($product->sizes);
                 }
-                if ($product->colors) {
+                if ($product->colors && is_array($product->colors)) {
                     // Extract color names from the color objects
                     foreach ($product->colors as $color) {
                         if (is_array($color) && isset($color['color_name'])) {
@@ -151,7 +152,7 @@ class OrderController extends Controller
         // Get user's preferred location from profile, fallback to request parameter
         $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
         
-        $query = Product::where('type', 'T-shirt');
+        $query = Product::where('type', 'T-SHIRT');
 
         // Filter by design color if design exists
         if ($design && $design->color_code) {
