@@ -247,7 +247,7 @@
                                         <div class="card-body p-2">
                                             <div class="d-flex align-items-center">
                                                 <div class="flex-shrink-0">
-                                                    <img src="{{ Storage::url($qrCode->file_path) }}" alt="QR Code" style="width: 50px; height: 50px;">
+                                                    <img src="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}" alt="QR Code" style="width: 50px; height: 50px;">
                                                 </div>
                                                 <div class="flex-grow-1 ms-3">
                                                     <h6 class="mb-1">{{ $qrCode->name }}</h6>

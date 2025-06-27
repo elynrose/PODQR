@@ -672,7 +672,7 @@
                     }
                     
                     console.log('Canvas is ready! Loading QR code...');
-                    var qrCodeUrl = '{{ Storage::url("") }}' + design.qr_code.file_path;
+                    var qrCodeUrl = design.qr_code && design.qr_code.file_path ? '{{ Storage::url("") }}' + design.qr_code.file_path : '{{ asset('images/blank.png') }}';
                     console.log('QR Code URL:', qrCodeUrl);
                     
                     loadQrCodeToCanvas(qrCodeUrl);
@@ -768,7 +768,7 @@
                         if (typeof canvas_front !== 'undefined' && typeof canvas_back !== 'undefined') {
                             design.photos.forEach(function(photo, index) {
                                 // Construct the photo URL
-                                var photoUrl = '{{ Storage::url("") }}' + photo.file_path;
+                                var photoUrl = photo.file_path ? '{{ Storage::url("") }}' + photo.file_path : '{{ asset('images/blank.png') }}';
                                 
                                 // Load photo to the appropriate canvas
                                 var targetCanvas = photo.side === 'back' ? canvas_back : canvas_front;

@@ -567,12 +567,12 @@
                 <div class="row">
                     @foreach($userQrCodes as $qrCode)
                         <div class="col-md-6 col-lg-4 mb-3">
-                            <div class="card qr-code-card" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ Storage::url($qrCode->file_path) }}">
+                            <div class="card qr-code-card" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}">
                                 <div class="card-body text-center">
-                                    <img src="{{ Storage::url($qrCode->file_path) }}" alt="QR Code" class="img-fluid mb-2" style="max-height: 150px;">
+                                    <img src="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}" alt="QR Code" class="img-fluid mb-2" style="max-height: 150px;">
                                     <h6 class="card-title">{{ $qrCode->name }}</h6>
                                     <p class="card-text small text-muted">{{ Str::limit($qrCode->content, 50) }}</p>
-                                    <button type="button" class="btn btn-primary btn-sm select-qr-btn" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ Storage::url($qrCode->file_path) }}">
+                                    <button type="button" class="btn btn-primary btn-sm select-qr-btn" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}">
                                         <i class="fa fa-plus"></i> Add to Design
                                     </button>
                                 </div>
@@ -1016,7 +1016,7 @@
                 console.log('Document ready, starting QR code loading...');
                 
                 // Load the QR code as the default image
-                var qrCodeUrl = '{{ Storage::url($defaultQrCode->file_path) }}';
+                var qrCodeUrl = '{{ $defaultQrCode->file_path ? Storage::url($defaultQrCode->file_path) : asset('images/blank.png') }}';
                 console.log('QR Code URL:', qrCodeUrl);
                 console.log('QR Code ID:', {{ $defaultQrCode->id }});
                 console.log('QR Code Name:', '{{ $defaultQrCode->name }}');
