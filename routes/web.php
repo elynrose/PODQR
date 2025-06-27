@@ -155,4 +155,7 @@ Route::get('/debug-nav', function () {
     return view('debug-nav');
 })->middleware(['auth'])->name('debug.nav');
 
+// Test Printful API
+Route::get('/test-printful-api', [App\Http\Controllers\OrderController::class, 'testPrintfulApi'])->name('test.printful.api');
+
 require __DIR__.'/auth.php';

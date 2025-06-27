@@ -13,6 +13,7 @@ use App\Models\Design;
 use App\Services\PrintfulService;
 use App\Services\StripeService;
 use App\Jobs\SyncPrintfulProducts;
+use Illuminate\Support\Facades\Http;
 
 class OrderController extends Controller
 {
@@ -98,8 +99,17 @@ class OrderController extends Controller
             // Get user's preferred location from profile, fallback to request parameter
             $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
             
+            // Debug: Log before API call
+            \Log::info('OrderController: About to fetch T-shirt products from Printful API');
+            
             // Get T-shirt products directly from Printful API
             $products = $this->printfulService->getTshirtProducts(20);
+
+            // Debug: Log after API call
+            \Log::info('OrderController: Printful API response', [
+                'products_count' => $products->count(),
+                'products' => $products->toArray()
+            ]);
 
             // Extract unique types, sizes, and colors from products for filters
             $types = $products->pluck('type')->unique()->filter()->values();
@@ -125,6 +135,14 @@ class OrderController extends Controller
             $sizes = $sizes->unique()->filter()->values();
             $colors = $colors->unique()->filter()->values();
 
+            // Debug: Log final data
+            \Log::info('OrderController: Final data prepared', [
+                'types_count' => $types->count(),
+                'sizes_count' => $sizes->count(),
+                'colors_count' => $colors->count(),
+                'userLocation' => $userLocation
+            ]);
+
             return view('orders.create', compact('design', 'products', 'userLocation', 'types', 'sizes', 'colors'));
             
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -133,6 +151,14 @@ class OrderController extends Controller
                 'designId' => $designId,
                 'availableDesigns' => Design::take(5)->get(['id', 'name'])
             ]);
+        } catch (\Exception $e) {
+            \Log::error('OrderController: Error in showOrderForm', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return empty products on error
+            return view('orders.create', compact('design', 'products', 'userLocation', 'types', 'sizes', 'colors'));
         }
     }
 
@@ -1406,6 +1432,40 @@ class OrderController extends Controller
                 'success' => false,
                 'message' => 'Failed to validate shipping compatibility',
                 'compatible' => false
+            ], 500);
+        }
+    }
+
+    /**
+     * Test Printful API endpoint
+     */
+    public function testPrintfulApi()
+    {
+        try {
+            \Log::info('Testing Printful API directly');
+            
+            // Test basic API connection
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . config('services.printful.api_key'),
+            ])->get('https://api.printful.com/catalog/products');
+
+            \Log::info('Direct API test response', [
+                'status_code' => $response->status(),
+                'response_body' => $response->body()
+            ]);
+
+            return response()->json([
+                'status_code' => $response->status(),
+                'response_body' => $response->json(),
+                'api_key_length' => strlen(config('services.printful.api_key') ?? ''),
+                'store_id' => config('services.printful.store_id')
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Direct API test error: ' . $e->getMessage());
+            return response()->json([
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ], 500);
         }
     }

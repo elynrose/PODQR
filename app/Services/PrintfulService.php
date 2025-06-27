@@ -497,10 +497,22 @@ class PrintfulService
     public function getTshirtProducts($limit = 20)
     {
         try {
+            \Log::info('PrintfulService: Starting getTshirtProducts', [
+                'limit' => $limit,
+                'api_key_length' => strlen($this->apiKey ?? ''),
+                'store_id' => $this->storeId
+            ]);
+
             // Get all products from catalog
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
             ])->get($this->baseUrl . '/catalog/products');
+
+            \Log::info('PrintfulService: API response received', [
+                'status_code' => $response->status(),
+                'response_body_length' => strlen($response->body()),
+                'response_body' => $response->body()
+            ]);
 
             if (!$response->successful()) {
                 Log::error('Printful Catalog API Error: ' . $response->body());
@@ -510,21 +522,38 @@ class PrintfulService
             $data = $response->json();
             $products = collect($data['result']['products'] ?? []);
 
+            \Log::info('PrintfulService: Raw products data', [
+                'total_products' => $products->count(),
+                'first_product' => $products->first()
+            ]);
+
             // Filter for T-shirt products
             $tshirtProducts = $products->filter(function ($product) {
                 $name = strtolower($product['name'] ?? '');
                 $type = strtolower($product['type'] ?? '');
                 
                 // Check if it's a T-shirt product
-                return str_contains($name, 't-shirt') || 
-                       str_contains($name, 'tshirt') || 
-                       str_contains($type, 't-shirt') ||
-                       str_contains($type, 'tshirt');
+                $isTshirt = str_contains($name, 't-shirt') || 
+                           str_contains($name, 'tshirt') || 
+                           str_contains($type, 't-shirt') ||
+                           str_contains($type, 'tshirt');
+                
+                \Log::info('PrintfulService: Product filtering', [
+                    'product_name' => $product['name'] ?? 'unknown',
+                    'product_type' => $product['type'] ?? 'unknown',
+                    'is_tshirt' => $isTshirt
+                ]);
+                
+                return $isTshirt;
             })->take($limit);
+
+            \Log::info('PrintfulService: T-shirt products filtered', [
+                'tshirt_products_count' => $tshirtProducts->count()
+            ]);
 
             // Transform to our format
             $formattedProducts = $tshirtProducts->map(function ($product) {
-                return [
+                $formatted = [
                     'printful_id' => $product['id'],
                     'printful_product_id' => $product['id'],
                     'name' => $product['name'],
@@ -538,6 +567,13 @@ class PrintfulService
                     'sizes' => $this->getProductSizes($product['id']),
                     'colors' => $this->getProductColors($product['id']),
                 ];
+                
+                \Log::info('PrintfulService: Formatted product', [
+                    'product_id' => $product['id'],
+                    'formatted' => $formatted
+                ]);
+                
+                return $formatted;
             });
 
             Log::info('Printful T-shirt products fetched', [
@@ -549,7 +585,9 @@ class PrintfulService
             return $formattedProducts;
 
         } catch (\Exception $e) {
-            Log::error('Printful T-shirt products fetch error: ' . $e->getMessage());
+            Log::error('Printful T-shirt products fetch error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return collect();
         }
     }
