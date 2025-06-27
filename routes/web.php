@@ -260,4 +260,61 @@ Route::get('/test/printful-service', function () {
     }
 });
 
+Route::get('/test/printful-variants/{productId}', function ($productId) {
+    try {
+        $printfulService = new \App\Services\PrintfulService();
+        
+        \Log::info("Testing variants for product {$productId}");
+        
+        $variants = $printfulService->getProductVariants($productId);
+        
+        // Filter for USA-compatible variants
+        $usaVariants = collect($variants)->filter(function ($variant) {
+            $isUsaCompatible = true;
+            
+            // Check for regional restrictions
+            if (isset($variant['regional_restrictions'])) {
+                $restrictions = $variant['regional_restrictions'];
+                if (isset($restrictions['blocked_countries']) && 
+                    in_array('US', $restrictions['blocked_countries'])) {
+                    $isUsaCompatible = false;
+                }
+            }
+            
+            // Check if variant is discontinued
+            if (isset($variant['discontinued']) && $variant['discontinued']) {
+                $isUsaCompatible = false;
+            }
+            
+            return $isUsaCompatible;
+        });
+        
+        \Log::info("Variant test result for product {$productId}", [
+            'total_variants' => count($variants),
+            'usa_compatible_variants' => $usaVariants->count(),
+            'variants' => $variants,
+            'usa_variants' => $usaVariants->toArray()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'product_id' => $productId,
+            'total_variants' => count($variants),
+            'usa_compatible_variants' => $usaVariants->count(),
+            'all_variants' => $variants,
+            'usa_variants' => $usaVariants->toArray(),
+            'sizes' => $usaVariants->pluck('size')->filter()->unique()->values()->toArray(),
+            'colors' => $usaVariants->pluck('color')->filter()->unique()->values()->toArray()
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error("Variant test error for product {$productId}: " . $e->getMessage());
+        return response()->json([
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 require __DIR__.'/auth.php';
