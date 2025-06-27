@@ -608,8 +608,11 @@ class PrintfulService
                 return $debugProducts;
             }
 
-            // Transform to our format
+            // Transform to our format with optimized variant fetching
             $formattedProducts = $tshirtProducts->map(function ($product) {
+                // Use cached variants or fetch with timeout
+                $variants = $this->getCachedProductVariants($product['id']);
+                
                 $formatted = [
                     'printful_id' => $product['id'],
                     'printful_product_id' => $product['id'],
@@ -618,15 +621,16 @@ class PrintfulService
                     'type' => 'T-SHIRT',
                     'brand' => $product['brand'] ?? 'Unknown',
                     'model' => $product['model'] ?? '',
-                    'base_price' => $this->getProductBasePrice($product['id']),
+                    'base_price' => $this->getBasePriceFromVariants($variants),
                     'image_url' => $product['image'] ?? null,
                     'is_active' => true,
-                    'sizes' => $this->getProductSizes($product['id']),
-                    'colors' => $this->getProductColors($product['id']),
+                    'sizes' => $this->getSizesFromVariants($variants),
+                    'colors' => $this->getColorsFromVariants($variants),
                 ];
                 
                 \Log::info('PrintfulService: Formatted product', [
                     'product_id' => $product['id'],
+                    'variants_count' => count($variants),
                     'formatted' => $formatted
                 ]);
                 
@@ -649,6 +653,88 @@ class PrintfulService
             ]);
             return $this->getFallbackProducts($limit);
         }
+    }
+
+    /**
+     * Get cached product variants with timeout
+     */
+    private function getCachedProductVariants($productId)
+    {
+        $cacheKey = "printful_variants_{$productId}";
+        
+        // Try to get from cache first
+        if (cache()->has($cacheKey)) {
+            \Log::info("PrintfulService: Using cached variants for product {$productId}");
+            return cache()->get($cacheKey);
+        }
+        
+        try {
+            // Fetch variants with shorter timeout
+            $variants = $this->getProductVariants($productId);
+            
+            // Cache for 1 hour
+            cache()->put($cacheKey, $variants, 3600);
+            
+            \Log::info("PrintfulService: Fetched and cached variants for product {$productId}", [
+                'variants_count' => count($variants)
+            ]);
+            
+            return $variants;
+        } catch (\Exception $e) {
+            \Log::error("PrintfulService: Failed to fetch variants for product {$productId}", [
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Get base price from variants
+     */
+    private function getBasePriceFromVariants($variants)
+    {
+        if ($variants && count($variants) > 0) {
+            return $variants[0]['retail_price'] ?? 19.99;
+        }
+        return 19.99; // Default price
+    }
+
+    /**
+     * Get sizes from variants
+     */
+    private function getSizesFromVariants($variants)
+    {
+        if ($variants) {
+            return collect($variants)
+                ->pluck('size')
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+        }
+        return ['M']; // Default size
+    }
+
+    /**
+     * Get colors from variants
+     */
+    private function getColorsFromVariants($variants)
+    {
+        if ($variants) {
+            return collect($variants)
+                ->pluck('color')
+                ->filter()
+                ->unique()
+                ->map(function ($color) {
+                    return [
+                        'color_name' => $color,
+                        'color_codes' => [$this->getColorCode($color)]
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+        return [['color_name' => 'White', 'color_codes' => ['#ffffff']]]; // Default color
     }
 
     /**
@@ -724,71 +810,6 @@ class PrintfulService
                 ],
             ]
         ])->take($limit);
-    }
-
-    /**
-     * Get product base price from variants
-     */
-    private function getProductBasePrice($productId)
-    {
-        try {
-            $variants = $this->getProductVariants($productId);
-            if ($variants && count($variants) > 0) {
-                // Get the first variant's retail price
-                return $variants[0]['retail_price'] ?? 19.99;
-            }
-            return 19.99; // Default price
-        } catch (\Exception $e) {
-            return 19.99; // Default price on error
-        }
-    }
-
-    /**
-     * Get product sizes from variants
-     */
-    private function getProductSizes($productId)
-    {
-        try {
-            $variants = $this->getProductVariants($productId);
-            if ($variants) {
-                return collect($variants)
-                    ->pluck('size')
-                    ->filter()
-                    ->unique()
-                    ->values()
-                    ->toArray();
-            }
-            return ['M']; // Default size
-        } catch (\Exception $e) {
-            return ['M']; // Default size on error
-        }
-    }
-
-    /**
-     * Get product colors from variants
-     */
-    private function getProductColors($productId)
-    {
-        try {
-            $variants = $this->getProductVariants($productId);
-            if ($variants) {
-                return collect($variants)
-                    ->pluck('color')
-                    ->filter()
-                    ->unique()
-                    ->map(function ($color) {
-                        return [
-                            'color_name' => $color,
-                            'color_codes' => [$this->getColorCode($color)]
-                        ];
-                    })
-                    ->values()
-                    ->toArray();
-            }
-            return [['color_name' => 'White', 'color_codes' => ['#ffffff']]]; // Default color
-        } catch (\Exception $e) {
-            return [['color_name' => 'White', 'color_codes' => ['#ffffff']]]; // Default color on error
-        }
     }
 
     /**
