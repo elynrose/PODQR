@@ -92,43 +92,52 @@ class OrderController extends Controller
      */
     public function showOrderForm(Request $request, $designId)
     {
-        $design = Design::findOrFail($designId);
-        
-        // Get user's preferred location from profile, fallback to request parameter
-        $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
-        
-        // Get only T-shirt products, limited to 20 for better performance
-        $products = Product::where('type', 'T-shirt')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->take(20)
-            ->get();
+        try {
+            $design = Design::findOrFail($designId);
+            
+            // Get user's preferred location from profile, fallback to request parameter
+            $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
+            
+            // Get only T-shirt products, limited to 20 for better performance
+            $products = Product::where('type', 'T-shirt')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->take(20)
+                ->get();
 
-        // Extract unique types, sizes, and colors from products for filters
-        $types = $products->pluck('type')->unique()->filter()->values();
-        $sizes = collect();
-        $colors = collect();
-        
-        foreach ($products as $product) {
-            if ($product->sizes) {
-                $sizes = $sizes->merge($product->sizes);
-            }
-            if ($product->colors) {
-                // Extract color names from the color objects
-                foreach ($product->colors as $color) {
-                    if (is_array($color) && isset($color['color_name'])) {
-                        $colors->push($color['color_name']);
-                    } elseif (is_string($color)) {
-                        $colors->push($color);
+            // Extract unique types, sizes, and colors from products for filters
+            $types = $products->pluck('type')->unique()->filter()->values();
+            $sizes = collect();
+            $colors = collect();
+            
+            foreach ($products as $product) {
+                if ($product->sizes) {
+                    $sizes = $sizes->merge($product->sizes);
+                }
+                if ($product->colors) {
+                    // Extract color names from the color objects
+                    foreach ($product->colors as $color) {
+                        if (is_array($color) && isset($color['color_name'])) {
+                            $colors->push($color['color_name']);
+                        } elseif (is_string($color)) {
+                            $colors->push($color);
+                        }
                     }
                 }
             }
-        }
-        
-        $sizes = $sizes->unique()->filter()->values();
-        $colors = $colors->unique()->filter()->values();
+            
+            $sizes = $sizes->unique()->filter()->values();
+            $colors = $colors->unique()->filter()->values();
 
-        return view('orders.create', compact('design', 'products', 'userLocation', 'types', 'sizes', 'colors'));
+            return view('orders.create', compact('design', 'products', 'userLocation', 'types', 'sizes', 'colors'));
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Design not found - show a friendly error page
+            return view('orders.design-not-found', [
+                'designId' => $designId,
+                'availableDesigns' => Design::take(5)->get(['id', 'name'])
+            ]);
+        }
     }
 
     /**
@@ -140,7 +149,7 @@ class OrderController extends Controller
         $design = $designId ? Design::find($designId) : null;
         
         // Get user's preferred location from profile, fallback to request parameter
-        $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
+        $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
         
         $query = Product::where('type', 'T-shirt');
 

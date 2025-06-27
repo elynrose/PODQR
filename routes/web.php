@@ -81,8 +81,10 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Order routes
+Route::get('/orders/create/{designId?}', [OrderController::class, 'showOrderForm'])->name('orders.create');
+Route::get('/api/products', [OrderController::class, 'getProducts'])->name('api.products');
+
 Route::middleware(['auth'])->group(function () {
-    Route::get('/orders/create/{designId?}', [OrderController::class, 'showOrderForm'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('/orders/history', [OrderController::class, 'orderHistory'])->name('orders.history');
     Route::get('/orders/success', [OrderController::class, 'handleSuccess'])->name('orders.success');
@@ -92,7 +94,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders/{order}/cancel-regional', [OrderController::class, 'cancelOrderDueToRegionalRestrictions'])->name('orders.cancel-regional');
     
     // API routes that need session authentication
-    Route::get('/api/products', [OrderController::class, 'getProducts'])->name('api.products');
     Route::get('/api/load-more-products', [OrderController::class, 'loadMoreProducts'])->name('api.load-more-products');
     Route::post('/api/calculate-total', [OrderController::class, 'calculateTotal'])->name('api.calculate-total');
     Route::post('/api/sync-products', [OrderController::class, 'syncProducts'])->name('api.sync-products');
