@@ -326,14 +326,25 @@ class OrderController extends Controller
             ];
 
             foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
+                // Get product from Printful API data instead of database
+                $printfulProducts = $this->printfulService->getTshirtProducts(50);
+                $product = $printfulProducts->firstWhere('printful_id', $item['product_id']);
+                
+                if (!$product) {
+                    \Log::error('Product not found in Printful data', ['product_id' => $item['product_id']]);
+                    return response()->json(['error' => 'Product not found'], 404);
+                }
+                
+                $itemTotal = $product['base_price'] * $item['quantity'];
+                $subtotal += $itemTotal;
+
                 $orderData['items'][] = [
-                    'product_id' => $product->id,
-                    'name' => $product->name,
+                    'product_id' => $product['printful_id'],
+                    'name' => $product['name'],
                     'size' => $item['size'],
                     'color' => $item['color'],
                     'quantity' => $item['quantity'],
-                    'price' => $product->base_price,
+                    'price' => $product['base_price'],
                 ];
             }
 
@@ -400,8 +411,16 @@ class OrderController extends Controller
             $orderItems = [];
 
             foreach ($request->items as $item) {
-                $product = Product::find($item['product_id']);
-                $itemTotal = $product->base_price * $item['quantity'];
+                // Get product from Printful API data instead of database
+                $printfulProducts = $this->printfulService->getTshirtProducts(50);
+                $product = $printfulProducts->firstWhere('printful_id', $item['product_id']);
+                
+                if (!$product) {
+                    \Log::error('Product not found in Printful data', ['product_id' => $item['product_id']]);
+                    return response()->json(['error' => 'Product not found'], 404);
+                }
+                
+                $itemTotal = $product['base_price'] * $item['quantity'];
                 $subtotal += $itemTotal;
 
                 $orderItems[] = [
@@ -409,7 +428,7 @@ class OrderController extends Controller
                     'size' => $item['size'],
                     'color' => $item['color'],
                     'quantity' => $item['quantity'],
-                    'unit_price' => $product->base_price,
+                    'unit_price' => $product['base_price'],
                     'total_price' => $itemTotal,
                 ];
             }
@@ -452,8 +471,8 @@ class OrderController extends Controller
                     ]);
                 } else {
                     $designData = [
-                        'product_name' => $item['product']->name ?? 'Unknown Product',
-                        'product_type' => $item['product']->type ?? 'Unknown Type',
+                        'product_name' => is_array($item['product']) ? $item['product']['name'] : ($item['product']->name ?? 'Unknown Product'),
+                        'product_type' => is_array($item['product']) ? $item['product']['type'] : ($item['product']->type ?? 'Unknown Type'),
                     ];
                     \Log::info('Creating order item without design', [
                         'product_name' => $designData['product_name'],
@@ -464,8 +483,8 @@ class OrderController extends Controller
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'design_id' => $design ? $design->id : null,
-                    'product_id' => $item['product']->id,
-                    'printful_variant_id' => $item['product']->printful_id,
+                    'product_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->id,
+                    'printful_variant_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->printful_id,
                     'size' => $item['size'],
                     'color' => $item['color'],
                     'quantity' => $item['quantity'],
@@ -1131,8 +1150,8 @@ class OrderController extends Controller
                     ]);
                 } else {
                     $designData = [
-                        'product_name' => $item['product']->name ?? 'Unknown Product',
-                        'product_type' => $item['product']->type ?? 'Unknown Type',
+                        'product_name' => is_array($item['product']) ? $item['product']['name'] : ($item['product']->name ?? 'Unknown Product'),
+                        'product_type' => is_array($item['product']) ? $item['product']['type'] : ($item['product']->type ?? 'Unknown Type'),
                     ];
                     \Log::info('Creating order item without design', [
                         'product_name' => $designData['product_name'],
@@ -1143,8 +1162,8 @@ class OrderController extends Controller
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'design_id' => $design ? $design->id : null,
-                    'product_id' => $item['product']->id,
-                    'printful_variant_id' => $item['product']->printful_id,
+                    'product_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->id,
+                    'printful_variant_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->printful_id,
                     'size' => $item['size'],
                     'color' => $item['color'],
                     'quantity' => $item['quantity'],
