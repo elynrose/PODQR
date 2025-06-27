@@ -492,26 +492,31 @@ class PrintfulService
     }
 
     /**
-     * Get T-shirt products directly from Printful catalog
+     * Get T-shirt products directly from Printful catalog with pagination
      */
-    public function getTshirtProducts($limit = 20)
+    public function getTshirtProducts($limit = 10, $offset = 0)
     {
         try {
             \Log::info('PrintfulService: Starting getTshirtProducts', [
                 'limit' => $limit,
+                'offset' => $offset,
                 'api_key_length' => strlen($this->apiKey ?? ''),
                 'store_id' => $this->storeId
             ]);
 
-            // Get all products from catalog with timeout
-            $response = Http::timeout(30)->withHeaders([
+            // Get products from catalog with pagination
+            $response = Http::timeout(15)->withHeaders([
                 'Authorization' => 'Bearer ' . $this->apiKey,
-            ])->get($this->baseUrl . '/catalog/products');
+            ])->get($this->baseUrl . '/catalog/products', [
+                'limit' => 50, // Get more products to filter from
+                'offset' => $offset
+            ]);
 
             \Log::info('PrintfulService: API response received', [
                 'status_code' => $response->status(),
                 'response_body_length' => strlen($response->body()),
-                'response_body' => $response->body()
+                'request_limit' => 50,
+                'request_offset' => $offset
             ]);
 
             if (!$response->successful()) {
@@ -631,7 +636,9 @@ class PrintfulService
             Log::info('Printful T-shirt products fetched', [
                 'total_products' => $products->count(),
                 'tshirt_products' => $tshirtProducts->count(),
-                'formatted_products' => $formattedProducts->count()
+                'formatted_products' => $formattedProducts->count(),
+                'limit' => $limit,
+                'offset' => $offset
             ]);
 
             return $formattedProducts;
@@ -642,6 +649,14 @@ class PrintfulService
             ]);
             return $this->getFallbackProducts($limit);
         }
+    }
+
+    /**
+     * Get more T-shirt products for pagination
+     */
+    public function getMoreTshirtProducts($offset = 0, $limit = 10)
+    {
+        return $this->getTshirtProducts($limit, $offset);
     }
 
     /**

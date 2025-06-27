@@ -102,8 +102,8 @@ class OrderController extends Controller
             // Debug: Log before API call
             \Log::info('OrderController: About to fetch T-shirt products from Printful API');
             
-            // Get T-shirt products directly from Printful API
-            $products = $this->printfulService->getTshirtProducts(20);
+            // Get T-shirt products directly from Printful API - only 10 initially
+            $products = $this->printfulService->getTshirtProducts(10);
 
             // Debug: Log after API call
             \Log::info('OrderController: Printful API response', [
@@ -159,6 +159,49 @@ class OrderController extends Controller
             
             // Return empty products on error
             return view('orders.create', compact('design', 'products', 'userLocation', 'types', 'sizes', 'colors'));
+        }
+    }
+
+    /**
+     * Get more products for pagination
+     */
+    public function getMoreProducts(Request $request)
+    {
+        try {
+            $offset = $request->input('offset', 0);
+            $limit = $request->input('limit', 10);
+            
+            \Log::info('OrderController: Loading more products', [
+                'offset' => $offset,
+                'limit' => $limit
+            ]);
+            
+            // Get more T-shirt products from Printful API
+            $products = $this->printfulService->getMoreTshirtProducts($offset, $limit);
+            
+            \Log::info('OrderController: More products loaded', [
+                'products_count' => $products->count(),
+                'offset' => $offset,
+                'limit' => $limit
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'products' => $products->values(),
+                'has_more' => $products->count() >= $limit
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('OrderController: Error loading more products', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load more products',
+                'products' => []
+            ], 500);
         }
     }
 

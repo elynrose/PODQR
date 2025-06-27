@@ -98,6 +98,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/api/calculate-total', [OrderController::class, 'calculateTotal'])->name('api.calculate-total');
     Route::post('/api/sync-products', [OrderController::class, 'syncProducts'])->name('api.sync-products');
     Route::post('/api/validate-product-shipping', [OrderController::class, 'validateProductShipping'])->name('api.validate-product-shipping');
+    Route::get('/api/more-products', [OrderController::class, 'getMoreProducts'])->name('api.more-products');
 });
 
 // Public design gallery
