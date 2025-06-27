@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\DalleController;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 
 // Public routes
 Route::get('/', function () {
@@ -161,5 +162,102 @@ Route::get('/test-printful-api', [App\Http\Controllers\OrderController::class, '
 
 // Test Printful Products
 Route::get('/test-printful-products', [App\Http\Controllers\OrderController::class, 'testPrintfulProducts'])->name('test.printful.products');
+
+// Test routes for debugging
+Route::get('/test/printful-status', function () {
+    try {
+        $apiKey = config('services.printful.api_key');
+        $storeId = config('services.printful.store_id');
+        
+        \Log::info('Testing Printful API configuration', [
+            'api_key_length' => strlen($apiKey ?? ''),
+            'api_key_preview' => substr($apiKey ?? '', 0, 10) . '...',
+            'store_id' => $storeId,
+            'api_key_empty' => empty($apiKey),
+            'store_id_empty' => empty($storeId)
+        ]);
+        
+        if (empty($apiKey)) {
+            return response()->json([
+                'error' => 'API key is not configured',
+                'api_key_length' => 0,
+                'store_id' => $storeId
+            ]);
+        }
+        
+        // Test basic API connection
+        $response = Http::timeout(10)->withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+        ])->get('https://api.printful.com/catalog/products?limit=5');
+        
+        \Log::info('Direct API test result', [
+            'status_code' => $response->status(),
+            'response_length' => strlen($response->body()),
+            'response_preview' => substr($response->body(), 0, 500)
+        ]);
+        
+        if ($response->successful()) {
+            $data = $response->json();
+            $products = $data['result']['products'] ?? [];
+            
+            return response()->json([
+                'success' => true,
+                'status_code' => $response->status(),
+                'total_products' => count($products),
+                'sample_products' => array_slice($products, 0, 3),
+                'api_key_length' => strlen($apiKey),
+                'store_id' => $storeId
+            ]);
+        } else {
+            return response()->json([
+                'error' => 'API request failed',
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'api_key_length' => strlen($apiKey),
+                'store_id' => $storeId
+            ]);
+        }
+        
+    } catch (\Exception $e) {
+        \Log::error('API test error: ' . $e->getMessage());
+        return response()->json([
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+            'api_key_length' => strlen(config('services.printful.api_key') ?? ''),
+            'store_id' => config('services.printful.store_id')
+        ]);
+    }
+});
+
+Route::get('/test/printful-service', function () {
+    try {
+        $printfulService = new \App\Services\PrintfulService();
+        
+        \Log::info('Testing PrintfulService getTshirtProducts method');
+        
+        $products = $printfulService->getTshirtProducts(5);
+        
+        \Log::info('PrintfulService test result', [
+            'products_count' => $products->count(),
+            'products' => $products->toArray()
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'products_count' => $products->count(),
+            'products' => $products->toArray(),
+            'api_key_length' => strlen(config('services.printful.api_key') ?? ''),
+            'store_id' => config('services.printful.store_id')
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('PrintfulService test error: ' . $e->getMessage());
+        return response()->json([
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+});
 
 require __DIR__.'/auth.php';
