@@ -561,15 +561,18 @@ class PrintfulService
 
             \Log::info('PrintfulService: Raw products data', [
                 'total_products' => $products->count(),
-                'first_product' => $products->first(),
+                'first_product_keys' => $products->first() ? array_keys($products->first()) : [],
+                'first_product_display_name_type' => $products->first() ? gettype($products->first()['display_name'] ?? null) : 'null',
+                'first_product_type_type' => $products->first() ? gettype($products->first()['type'] ?? null) : 'null',
+                'first_product_description_type' => $products->first() ? gettype($products->first()['description'] ?? null) : 'null',
                 'product_names' => $products->pluck('display_name')->take(3)->toArray()
             ]);
 
             // Filter for T-shirt products with more inclusive criteria
             $tshirtProducts = $products->filter(function ($product) {
-                $name = strtolower($product['display_name'] ?? '');
-                $type = strtolower($product['type'] ?? '');
-                $description = strtolower($product['description'] ?? '');
+                $name = is_string($product['display_name'] ?? null) ? strtolower($product['display_name']) : '';
+                $type = is_string($product['type'] ?? null) ? strtolower($product['type']) : '';
+                $description = is_string($product['description'] ?? null) ? strtolower($product['description']) : '';
                 
                 // More inclusive T-shirt detection
                 $isTshirt = str_contains($name, 't-shirt') || 
