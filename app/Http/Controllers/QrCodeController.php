@@ -377,4 +377,33 @@ class QrCodeController extends Controller
             'file_url' => $qrCode->file_url
         ]);
     }
+
+    /**
+     * Get user's QR codes for the design page
+     */
+    public function getUserQrCodes()
+    {
+        try {
+            $user = auth()->user();
+            $qrCodes = QrCode::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($qrCode) {
+                    // Use same-domain URL instead of external storage URL
+                    $qrCode->file_url = url('/qr-codes/' . basename($qrCode->file_path));
+                    return $qrCode;
+                });
+
+            return response()->json([
+                'success' => true,
+                'qr_codes' => $qrCodes
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching user QR codes: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading QR codes'
+            ], 500);
+        }
+    }
 }

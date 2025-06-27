@@ -635,6 +635,29 @@ class DesignManagementController extends Controller
     private function saveDesignImage($base64Data, $designId, $side)
     {
         try {
+            // Check if this is canvas data format (when toDataURL fails)
+            if (strpos($base64Data, 'canvas_data:') === 0) {
+                // Extract canvas JSON data
+                $canvasJson = substr($base64Data, 12); // Remove 'canvas_data:' prefix
+                $canvasData = json_decode($canvasJson, true);
+                
+                if ($canvasData) {
+                    // Generate a placeholder image for canvas data
+                    $timestamp = time();
+                    $filename = $side . '_' . $designId . '_' . $timestamp . '.png';
+                    $filepath = 'designs/' . $designId . '/photos/' . $filename;
+                    
+                    // Create placeholder image from canvas data
+                    $this->createPlaceholderImage($filepath, $canvasData);
+                    
+                    \Log::info('Canvas data image saved: ' . $filepath);
+                    return $filepath;
+                } else {
+                    \Log::warning('Invalid canvas data format for design ' . $designId . ' ' . $side);
+                    return null;
+                }
+            }
+            
             // Remove data URL prefix if present
             if (strpos($base64Data, 'data:image/png;base64,') === 0) {
                 $base64Data = substr($base64Data, 22);

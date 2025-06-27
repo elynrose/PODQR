@@ -31,6 +31,7 @@ Route::post('/qr-generate-data-url', [QrCodeController::class, 'generateDataUrl'
 Route::post('/qr-generate-and-save', [QrCodeController::class, 'generateAndSaveFromDesigner'])->middleware(['auth'])->name('qr-generate-and-save');
 Route::post('/qr-save-and-design', [QrCodeController::class, 'saveAndDesign'])->middleware(['auth'])->name('qr-save-and-design');
 Route::delete('/qr-codes/{qrCode}', [QrCodeController::class, 'destroy'])->middleware(['auth'])->name('qr-codes.destroy');
+Route::get('/qr-codes/user/list', [QrCodeController::class, 'getUserQrCodes'])->middleware(['auth'])->name('qr-codes.user.list');
 
 // Serve QR code images with CORS headers
 Route::get('/qr-codes/{filename}', function ($filename) {

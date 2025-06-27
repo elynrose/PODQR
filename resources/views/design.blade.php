@@ -567,12 +567,12 @@
                 <div class="row">
                     @foreach($userQrCodes as $qrCode)
                         <div class="col-md-6 col-lg-4 mb-3">
-                            <div class="card qr-code-card" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}">
+                            <div class="card qr-code-card" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ $qrCode->file_path ? url('/qr-codes/' . basename($qrCode->file_path)) : asset('images/blank.png') }}">
                                 <div class="card-body text-center">
-                                    <img src="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}" alt="QR Code" class="img-fluid mb-2" style="max-height: 150px;">
+                                    <img src="{{ $qrCode->file_path ? url('/qr-codes/' . basename($qrCode->file_path)) : asset('images/blank.png') }}" alt="QR Code" class="img-fluid mb-2" style="max-height: 150px;">
                                     <h6 class="card-title">{{ $qrCode->name }}</h6>
                                     <p class="card-text small text-muted">{{ Str::limit($qrCode->content, 50) }}</p>
-                                    <button type="button" class="btn btn-primary btn-sm select-qr-btn" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ $qrCode->file_path ? Storage::url($qrCode->file_path) : asset('images/blank.png') }}">
+                                    <button type="button" class="btn btn-primary btn-sm select-qr-btn" data-qr-id="{{ $qrCode->id }}" data-qr-url="{{ $qrCode->file_path ? url('/qr-codes/' . basename($qrCode->file_path)) : asset('images/blank.png') }}">
                                         <i class="fa fa-plus"></i> Add to Design
                                     </button>
                                 </div>
@@ -1016,7 +1016,7 @@
                 console.log('Document ready, starting QR code loading...');
                 
                 // Load the QR code as the default image
-                var qrCodeUrl = '{{ $defaultQrCode->file_path ? Storage::url($defaultQrCode->file_path) : asset('images/blank.png') }}';
+                var qrCodeUrl = '{{ $defaultQrCode->file_path ? url('/qr-codes/' . basename($defaultQrCode->file_path)) : asset('images/blank.png') }}';
                 console.log('QR Code URL:', qrCodeUrl);
                 console.log('QR Code ID:', {{ $defaultQrCode->id }});
                 console.log('QR Code Name:', '{{ $defaultQrCode->name }}');
@@ -1240,7 +1240,14 @@
                     });
                 } catch (error) {
                     console.warn('Front canvas toDataURL failed (possibly due to CORS):', error);
-                    // Continue without front design image
+                    // Try alternative method: export canvas as JSON and recreate
+                    try {
+                        var canvasData = canvas_front.toJSON();
+                        frontDesignImage = 'canvas_data:' + JSON.stringify(canvasData);
+                    } catch (fallbackError) {
+                        console.warn('Front canvas fallback export also failed:', fallbackError);
+                        // Continue without front design image
+                    }
                 }
             }
             
@@ -1252,7 +1259,14 @@
                     });
                 } catch (error) {
                     console.warn('Back canvas toDataURL failed (possibly due to CORS):', error);
-                    // Continue without back design image
+                    // Try alternative method: export canvas as JSON and recreate
+                    try {
+                        var canvasData = canvas_back.toJSON();
+                        backDesignImage = 'canvas_data:' + JSON.stringify(canvasData);
+                    } catch (fallbackError) {
+                        console.warn('Back canvas fallback export also failed:', fallbackError);
+                        // Continue without back design image
+                    }
                 }
             }
             

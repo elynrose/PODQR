@@ -672,7 +672,7 @@
                     }
                     
                     console.log('Canvas is ready! Loading QR code...');
-                    var qrCodeUrl = design.qr_code && design.qr_code.file_path ? '{{ Storage::url("") }}' + design.qr_code.file_path : '{{ asset('images/blank.png') }}';
+                    var qrCodeUrl = '{{ $design->qrCode && $design->qrCode->file_path ? url('/qr-codes/' . basename($design->qrCode->file_path)) : asset('images/blank.png') }}';
                     console.log('QR Code URL:', qrCodeUrl);
                     
                     loadQrCodeToCanvas(qrCodeUrl);
