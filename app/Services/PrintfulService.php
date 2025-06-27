@@ -490,4 +490,156 @@ class PrintfulService
     {
         return $this->storeId;
     }
+
+    /**
+     * Get T-shirt products directly from Printful catalog
+     */
+    public function getTshirtProducts($limit = 20)
+    {
+        try {
+            // Get all products from catalog
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->get($this->baseUrl . '/catalog/products');
+
+            if (!$response->successful()) {
+                Log::error('Printful Catalog API Error: ' . $response->body());
+                return collect();
+            }
+
+            $data = $response->json();
+            $products = collect($data['result']['products'] ?? []);
+
+            // Filter for T-shirt products
+            $tshirtProducts = $products->filter(function ($product) {
+                $name = strtolower($product['name'] ?? '');
+                $type = strtolower($product['type'] ?? '');
+                
+                // Check if it's a T-shirt product
+                return str_contains($name, 't-shirt') || 
+                       str_contains($name, 'tshirt') || 
+                       str_contains($type, 't-shirt') ||
+                       str_contains($type, 'tshirt');
+            })->take($limit);
+
+            // Transform to our format
+            $formattedProducts = $tshirtProducts->map(function ($product) {
+                return [
+                    'printful_id' => $product['id'],
+                    'printful_product_id' => $product['id'],
+                    'name' => $product['name'],
+                    'description' => $product['description'] ?? '',
+                    'type' => 'T-SHIRT',
+                    'brand' => $product['brand'] ?? 'Unknown',
+                    'model' => $product['model'] ?? '',
+                    'base_price' => $this->getProductBasePrice($product['id']),
+                    'image_url' => $product['image'] ?? null,
+                    'is_active' => true,
+                    'sizes' => $this->getProductSizes($product['id']),
+                    'colors' => $this->getProductColors($product['id']),
+                ];
+            });
+
+            Log::info('Printful T-shirt products fetched', [
+                'total_products' => $products->count(),
+                'tshirt_products' => $tshirtProducts->count(),
+                'formatted_products' => $formattedProducts->count()
+            ]);
+
+            return $formattedProducts;
+
+        } catch (\Exception $e) {
+            Log::error('Printful T-shirt products fetch error: ' . $e->getMessage());
+            return collect();
+        }
+    }
+
+    /**
+     * Get product base price from variants
+     */
+    private function getProductBasePrice($productId)
+    {
+        try {
+            $variants = $this->getProductVariants($productId);
+            if ($variants && count($variants) > 0) {
+                // Get the first variant's retail price
+                return $variants[0]['retail_price'] ?? 19.99;
+            }
+            return 19.99; // Default price
+        } catch (\Exception $e) {
+            return 19.99; // Default price on error
+        }
+    }
+
+    /**
+     * Get product sizes from variants
+     */
+    private function getProductSizes($productId)
+    {
+        try {
+            $variants = $this->getProductVariants($productId);
+            if ($variants) {
+                return collect($variants)
+                    ->pluck('size')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray();
+            }
+            return ['M']; // Default size
+        } catch (\Exception $e) {
+            return ['M']; // Default size on error
+        }
+    }
+
+    /**
+     * Get product colors from variants
+     */
+    private function getProductColors($productId)
+    {
+        try {
+            $variants = $this->getProductVariants($productId);
+            if ($variants) {
+                return collect($variants)
+                    ->pluck('color')
+                    ->filter()
+                    ->unique()
+                    ->map(function ($color) {
+                        return [
+                            'color_name' => $color,
+                            'color_codes' => [$this->getColorCode($color)]
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+            }
+            return [['color_name' => 'White', 'color_codes' => ['#ffffff']]]; // Default color
+        } catch (\Exception $e) {
+            return [['color_name' => 'White', 'color_codes' => ['#ffffff']]]; // Default color on error
+        }
+    }
+
+    /**
+     * Get color code from color name
+     */
+    private function getColorCode($colorName)
+    {
+        $colorMap = [
+            'white' => '#ffffff',
+            'black' => '#000000',
+            'navy' => '#000080',
+            'gray' => '#808080',
+            'red' => '#ff0000',
+            'blue' => '#0000ff',
+            'green' => '#00ff00',
+            'yellow' => '#ffff00',
+            'purple' => '#800080',
+            'pink' => '#ffc0cb',
+            'orange' => '#ffa500',
+            'brown' => '#a52a2a',
+        ];
+
+        $colorName = strtolower($colorName);
+        return $colorMap[$colorName] ?? '#ffffff';
+    }
 } 

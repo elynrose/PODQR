@@ -98,13 +98,8 @@ class OrderController extends Controller
             // Get user's preferred location from profile, fallback to request parameter
             $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
             
-            // Get only T-shirt products, limited to 20 for better performance
-            // Note: Printful uses "T-SHIRT" (uppercase) for the type
-            $products = Product::where('type', 'T-SHIRT')
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->take(20)
-                ->get();
+            // Get T-shirt products directly from Printful API
+            $products = $this->printfulService->getTshirtProducts(20);
 
             // Extract unique types, sizes, and colors from products for filters
             $types = $products->pluck('type')->unique()->filter()->values();
@@ -112,12 +107,12 @@ class OrderController extends Controller
             $colors = collect();
             
             foreach ($products as $product) {
-                if ($product->sizes && is_array($product->sizes)) {
-                    $sizes = $sizes->merge($product->sizes);
+                if (isset($product['sizes']) && is_array($product['sizes'])) {
+                    $sizes = $sizes->merge($product['sizes']);
                 }
-                if ($product->colors && is_array($product->colors)) {
+                if (isset($product['colors']) && is_array($product['colors'])) {
                     // Extract color names from the color objects
-                    foreach ($product->colors as $color) {
+                    foreach ($product['colors'] as $color) {
                         if (is_array($color) && isset($color['color_name'])) {
                             $colors->push($color['color_name']);
                         } elseif (is_string($color)) {
@@ -152,16 +147,28 @@ class OrderController extends Controller
         // Get user's preferred location from profile, fallback to request parameter
         $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
         
-        $query = Product::where('type', 'T-SHIRT');
+        // Get products directly from Printful API
+        $products = $this->printfulService->getTshirtProducts(12);
 
         // Filter by design color if design exists
         if ($design && $design->color_code) {
-            $query->whereJsonContains('colors', $design->color_code);
+            $products = $products->filter(function ($product) use ($design) {
+                if (isset($product['colors']) && is_array($product['colors'])) {
+                    foreach ($product['colors'] as $color) {
+                        if (is_array($color) && isset($color['color_codes'])) {
+                            foreach ($color['color_codes'] as $colorCode) {
+                                if ($colorCode === $design->color_code) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            });
         }
 
-        $products = $query->orderBy('name')->take(12)->get();
-
-        return response()->json($products);
+        return response()->json($products->values());
     }
 
     /**
