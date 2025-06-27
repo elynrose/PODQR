@@ -168,4 +168,12 @@ class Design extends Model
     {
         return is_array($this->texts) ? count($this->texts) : 0;
     }
+
+    /**
+     * Get the order items for this design.
+     */
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }

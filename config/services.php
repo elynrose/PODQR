@@ -35,4 +35,21 @@ return [
         ],
     ],
 
+    'printful' => [
+        'api_key' => env('PRINTFUL_API_KEY'),
+        'store_id' => env('PRINTFUL_STORE_ID'),
+    ],
+
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook' => [
+            'secret' => env('STRIPE_WEBHOOK_SECRET'),
+        ],
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+    ],
+
 ];

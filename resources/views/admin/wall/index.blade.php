@@ -1,8 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('My Wall') }}
-        </h2>
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Admin Wall - All Posts') }}
+            </h2>
+            <div class="flex gap-4">
+                <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                    {{ __('Back to Dashboard') }}
+                </a>
+            </div>
+        </div>
     </x-slot>
 
     @push('styles')
@@ -147,6 +154,12 @@
         .user-name {
             font-weight: 600;
             color: #14171a;
+            margin: 0;
+        }
+        
+        .user-email {
+            color: #657786;
+            font-size: 14px;
             margin: 0;
         }
         
@@ -305,46 +318,6 @@
     @endpush
 
     <div class="wall-container">
-        <!-- Post Form -->
-        <div class="post-form">
-            <form id="postForm" enctype="multipart/form-data">
-                @csrf
-                <textarea 
-                    id="postContent" 
-                    name="content" 
-                    class="post-input" 
-                    placeholder="Share something on your wall..."
-                    maxlength="255"
-                ></textarea>
-                
-                <div id="selectedFile" class="selected-file" style="display: none;">
-                    <div class="selected-file-info">
-                        <i class="fa fa-file selected-file-icon"></i>
-                        <span id="selectedFileName"></span>
-                    </div>
-                    <button type="button" class="remove-file-btn" id="removeFile">
-                        <i class="fa fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="post-actions">
-                    <div class="file-upload">
-                        <input type="file" id="attachment" name="attachment" accept="image/*,.pdf,.doc,.docx,.txt">
-                        <button type="button" class="file-upload-btn" id="fileUploadBtn">
-                            <i class="fa fa-paperclip"></i>
-                        </button>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <span id="charCount" class="char-count">255</span>
-                        <button type="submit" class="post-btn" id="postBtn" disabled>
-                            Post
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-
         <!-- Posts Container -->
         <div id="postsContainer">
             @if($posts->count() > 0)
@@ -356,7 +329,13 @@
                             </div>
                             <div class="user-info">
                                 <h4 class="user-name">{{ $post->user->name }}</h4>
+                                <p class="user-email">{{ $post->user->email }}</p>
                                 <p class="post-time">{{ $post->created_at->diffForHumans() }}</p>
+                            </div>
+                            <div class="admin-actions">
+                                <button class="action-btn delete-btn" onclick="deletePost({{ $post->id }}, '{{ $post->user->name }}')" title="Delete Post">
+                                    <i class="fa fa-trash"></i>
+                                </button>
                             </div>
                         </div>
                         
@@ -385,12 +364,6 @@
                                 <i class="fa fa-eye"></i>
                                 <span>{{ $post->view_count }} views</span>
                             </div>
-                            
-                                <div class="post-actions-footer">
-                                    <button class="action-btn delete-btn" onclick="deletePost({{ $post->id }})">
-                                        <i class="fa fa-trash"></i>
-                                    </button>
-                                </div>
                         </div>
                     </div>
                 @endforeach
@@ -398,7 +371,7 @@
                 <div class="no-posts">
                     <i class="fa fa-comments"></i>
                     <h3>No posts yet</h3>
-                    <p>Start sharing on your wall!</p>
+                    <p>There are no wall posts to display.</p>
                 </div>
             @endif
         </div>
@@ -414,169 +387,13 @@
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
             });
-
-            // Character count
-            $('#postContent').on('input', function() {
-                var maxLength = 255;
-                var currentLength = $(this).val().length;
-                var remaining = maxLength - currentLength;
-                
-                $('#charCount').text(remaining);
-                
-                if (remaining <= 20) {
-                    $('#charCount').removeClass('warning danger').addClass('danger');
-                } else if (remaining <= 50) {
-                    $('#charCount').removeClass('warning danger').addClass('warning');
-                } else {
-                    $('#charCount').removeClass('warning danger');
-                }
-                
-                // Enable/disable post button
-                if (currentLength > 0) {
-                    $('#postBtn').prop('disabled', false);
-                } else {
-                    $('#postBtn').prop('disabled', true);
-                }
-            });
-
-            // File upload
-            $('#attachment').on('change', function() {
-                var file = this.files[0];
-                if (file) {
-                    $('#selectedFileName').text(file.name);
-                    $('#selectedFile').show();
-                    
-                    // Update icon based on file type
-                    var icon = 'fa-file';
-                    if (file.type.startsWith('image/')) {
-                        icon = 'fa-image';
-                    } else if (file.type.includes('pdf')) {
-                        icon = 'fa-file-pdf-o';
-                    } else if (file.type.includes('word')) {
-                        icon = 'fa-file-word-o';
-                    } else if (file.type.includes('text')) {
-                        icon = 'fa-file-text-o';
-                    }
-                    
-                    $('.selected-file-icon').removeClass().addClass('fa ' + icon + ' selected-file-icon');
-                }
-            });
-
-            // Remove file
-            $('#removeFile').on('click', function() {
-                $('#attachment').val('');
-                $('#selectedFile').hide();
-            });
-
-            // File upload button click
-            $('#fileUploadBtn').on('click', function() {
-                $('#attachment').click();
-            });
-
-            // Submit post
-            $('#postForm').on('submit', function(e) {
-                e.preventDefault();
-                
-                var formData = new FormData(this);
-                var $btn = $('#postBtn');
-                var originalText = $btn.text();
-                
-                $btn.prop('disabled', true).text('Posting...');
-                
-                $.ajax({
-                    url: '{{ route("wall.store") }}',
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        if (response.success) {
-                            // Add new post to the top
-                            addPostToDOM(response.post);
-                            
-                            // Reset form
-                            $('#postContent').val('');
-                            $('#attachment').val('');
-                            $('#selectedFile').hide();
-                            $('#charCount').text('255');
-                            $('#postBtn').prop('disabled', true);
-                            
-                            // Remove "no posts" message if it exists
-                            $('.no-posts').remove();
-                            
-                            showAlert('Post created successfully!', 'success');
-                        }
-                    },
-                    error: function(xhr) {
-                        let msg = 'Error creating post.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        showAlert(msg, 'error');
-                    },
-                    complete: function() {
-                        $btn.prop('disabled', false).text(originalText);
-                    }
-                });
-            });
         });
 
-        // Add post to DOM
-        function addPostToDOM(post) {
-            var postHtml = `
-                <div class="post" data-post-id="${post.id}">
-                    <div class="post-header">
-                        <div class="user-avatar">
-                            ${post.user.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div class="user-info">
-                            <h4 class="user-name">${post.user.name}</h4>
-                            <p class="post-time">Just now</p>
-                        </div>
-                    </div>
-                    
-                    <div class="post-content">
-                        ${post.content}
-                    </div>
-                    
-                    ${post.attachment_path ? `
-                        <div class="post-attachment">
-                            ${post.attachment_type === 'image' ? 
-                                `<img src="${post.attachment_url}" alt="Attachment" class="attachment-image">` :
-                                `<a href="${post.attachment_url}" target="_blank" class="attachment-file">
-                                    <i class="fa fa-file file-icon"></i>
-                                    <div class="file-info">
-                                        <p class="file-name">${post.attachment_name}</p>
-                                        <p class="file-size">${post.attachment_name.split('.').pop().toUpperCase()} File</p>
-                                    </div>
-                                </a>`
-                            }
-                        </div>
-                    ` : ''}
-                    
-                    <div class="post-footer">
-                        <div class="view-count">
-                            <i class="fa fa-eye"></i>
-                            <span>0 views</span>
-                        </div>
-                        
-                        <div class="post-actions-footer">
-                            <button class="action-btn delete-btn" onclick="deletePost(${post.id})">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            $('#postsContainer').prepend(postHtml);
-        }
-
-        // Delete post
-        function deletePost(postId) {
-            if (confirm('Are you sure you want to delete this post?')) {
+        // Delete post (admin function)
+        function deletePost(postId, userName) {
+            if (confirm('Are you sure you want to delete this post by ' + userName + '? This action cannot be undone.')) {
                 $.ajax({
-                    url: '/wall/' + postId,
+                    url: '/admin/wall/' + postId,
                     type: 'DELETE',
                     success: function(response) {
                         if (response.success) {
@@ -589,7 +406,7 @@
                                         <div class="no-posts">
                                             <i class="fa fa-comments"></i>
                                             <h3>No posts yet</h3>
-                                            <p>Start sharing on your wall!</p>
+                                            <p>There are no wall posts to display.</p>
                                         </div>
                                     `);
                                 }
@@ -606,6 +423,28 @@
                     }
                 });
             }
+        }
+
+        // Show alert function
+        function showAlert(message, type) {
+            var alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            var alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Remove existing alerts
+            $('.alert').remove();
+            
+            // Add new alert at the top
+            $('.wall-container').prepend(alertHtml);
+            
+            // Auto-hide after 5 seconds
+            setTimeout(function() {
+                $('.alert').fadeOut();
+            }, 5000);
         }
     </script>
     @endpush

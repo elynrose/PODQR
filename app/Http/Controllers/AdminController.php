@@ -98,6 +98,7 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'is_admin' => ['boolean'],
+            'user_type' => ['required', Rule::in(['free', 'premium', 'partner'])],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 

@@ -117,31 +117,19 @@ class DesignManagementController extends Controller
      */
     public function saveFromDesigner(Request $request)
     {
-        // Debug: Log the incoming request data
-        \Log::info('Save design request data:', $request->all());
-        
-        $validator = Validator::make($request->all(), [
+        $request->validate([
+            'design_name' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'clothes_type_id' => 'required|exists:clothes_types,id',
             'shirt_size_id' => 'required|exists:shirt_sizes,id',
-            'color_code' => 'required|string',
+            'color_code' => 'nullable|string',
             'qr_code_id' => 'nullable|exists:qr_codes,id',
             'front_canvas_data' => 'nullable|string',
             'back_canvas_data' => 'nullable|string',
+            'front_design_image' => 'nullable|string',
+            'back_design_image' => 'nullable|string',
             'cover_image_data' => 'nullable|string',
-            'design_name' => 'nullable|string|max:255',
         ]);
-
-        if ($validator->fails()) {
-            // Debug: Log validation errors
-            \Log::error('Design save validation failed:', $validator->errors()->toArray());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-                'debug_data' => $request->all() // Include request data for debugging
-            ], 422);
-        }
 
         try {
             $user = auth()->user();
@@ -160,6 +148,19 @@ class DesignManagementController extends Controller
                 'status' => 'saved',
                 'is_public' => false,
             ]);
+
+            // Save design-only images if provided
+            if ($request->front_design_image) {
+                $frontImagePath = $this->saveDesignImage($request->front_design_image, $design->id, 'front');
+                $design->update(['front_image_path' => $frontImagePath]);
+                \Log::info('Front design image saved: ' . $frontImagePath);
+            }
+            
+            if ($request->back_design_image) {
+                $backImagePath = $this->saveDesignImage($request->back_design_image, $design->id, 'back');
+                $design->update(['back_image_path' => $backImagePath]);
+                \Log::info('Back design image saved: ' . $backImagePath);
+            }
 
             // Save cover image if provided
             if ($request->cover_image_data) {
@@ -183,6 +184,7 @@ class DesignManagementController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Error saving design: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return response()->json([
                 'success' => false,
@@ -244,7 +246,7 @@ class DesignManagementController extends Controller
      */
     public function show(Design $design)
     {
-        // Check if user can view this design
+        // Check if user owns the design or if it's public
         if ($design->user_id !== Auth::id() && !$design->is_public) {
             abort(403, 'You do not have permission to view this design.');
         }
@@ -252,6 +254,33 @@ class DesignManagementController extends Controller
         $design->load(['clothesType', 'shirtSize', 'qrCode', 'user']);
 
         return view('designs.show', compact('design'));
+    }
+
+    /**
+     * Get design preview data for order form.
+     */
+    public function preview(Design $design)
+    {
+        // Check if user owns the design
+        if ($design->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to view this design.'
+            ], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'design' => [
+                'id' => $design->id,
+                'name' => $design->name,
+                'description' => $design->description,
+                'front_image_path' => $design->front_image_path,
+                'front_image_url' => $design->front_image_path ? asset('storage/' . $design->front_image_path) : null,
+                'back_image_path' => $design->back_image_path,
+                'back_image_url' => $design->back_image_path ? asset('storage/' . $design->back_image_path) : null,
+            ]
+        ]);
     }
 
     /**
@@ -307,35 +336,26 @@ class DesignManagementController extends Controller
     {
         // Check if user can edit this design
         if ($design->user_id !== Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to edit this design.'
-            ], 403);
+            abort(403, 'You do not have permission to edit this design.');
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
+        $request->validate([
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'clothes_type_id' => 'required|exists:clothes_types,id',
             'shirt_size_id' => 'required|exists:shirt_sizes,id',
-            'color_code' => 'required|string',
+            'color_code' => 'nullable|string',
             'qr_code_id' => 'nullable|exists:qr_codes,id',
             'qr_code_position' => 'nullable|array',
             'photos' => 'nullable|array',
             'texts' => 'nullable|array',
             'front_canvas_data' => 'nullable|string',
             'back_canvas_data' => 'nullable|string',
-            'status' => 'in:draft,saved,published',
+            'front_design_image' => 'nullable|string',
+            'back_design_image' => 'nullable|string',
+            'status' => 'required|string|in:draft,saved,published',
             'is_public' => 'boolean',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
 
         $design->update([
             'name' => $request->input('name'),
@@ -353,7 +373,20 @@ class DesignManagementController extends Controller
             'is_public' => $request->input('is_public', false),
         ]);
 
-        // Regenerate preview images if canvas data changed
+        // Save design-only images if provided
+        if ($request->front_design_image) {
+            $frontImagePath = $this->saveDesignImage($request->front_design_image, $design->id, 'front');
+            $design->update(['front_image_path' => $frontImagePath]);
+            \Log::info('Front design image updated: ' . $frontImagePath);
+        }
+        
+        if ($request->back_design_image) {
+            $backImagePath = $this->saveDesignImage($request->back_design_image, $design->id, 'back');
+            $design->update(['back_image_path' => $backImagePath]);
+            \Log::info('Back design image updated: ' . $backImagePath);
+        }
+
+        // Regenerate preview images if canvas data changed (fallback for existing functionality)
         if ($request->input('front_canvas_data') || $request->input('back_canvas_data')) {
             $this->generatePreviewImages($design);
         }
@@ -399,16 +432,161 @@ class DesignManagementController extends Controller
      */
     private function generatePreviewImages(Design $design)
     {
-        // This would typically use a service to convert canvas data to images
-        // For now, we'll just store the canvas data and generate images on-demand
-        
-        // You could implement image generation here using libraries like:
-        // - Puppeteer to render the canvas
-        // - Canvas API to draw the design
-        // - Or use a third-party service
-        
-        // For now, we'll leave this as a placeholder
-        // The actual image generation can be implemented later
+        try {
+            \Log::info('Generating preview images for design: ' . $design->id);
+            
+            // Create design directory if it doesn't exist
+            $designDir = 'designs/' . $design->id . '/photos';
+            if (!Storage::disk('public')->exists($designDir)) {
+                Storage::disk('public')->makeDirectory($designDir);
+            }
+            
+            $timestamp = time();
+            $updated = false;
+            
+            // Generate front image if canvas data exists
+            if ($design->front_canvas_data) {
+                \Log::info('Generating front image from canvas data');
+                $frontImagePath = $this->generateDesignImageFromCanvas($design->front_canvas_data, $design->id, 'front', $timestamp);
+                if ($frontImagePath) {
+                    $design->front_image_path = $frontImagePath;
+                    $updated = true;
+                    \Log::info('Front image generated: ' . $frontImagePath);
+                }
+            }
+            
+            // Generate back image if canvas data exists
+            if ($design->back_canvas_data) {
+                \Log::info('Generating back image from canvas data');
+                $backImagePath = $this->generateDesignImageFromCanvas($design->back_canvas_data, $design->id, 'back', $timestamp);
+                if ($backImagePath) {
+                    $design->back_image_path = $backImagePath;
+                    $updated = true;
+                    \Log::info('Back image generated: ' . $backImagePath);
+                }
+            }
+            
+            // Save updates if any images were generated
+            if ($updated) {
+                $design->save();
+                \Log::info('Design preview images updated successfully');
+            } else {
+                \Log::info('No preview images generated (no canvas data available)');
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('Error generating preview images: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+        }
+    }
+    
+    /**
+     * Generate a design-only image from canvas data.
+     */
+    private function generateDesignImageFromCanvas($canvasData, $designId, $side, $timestamp)
+    {
+        try {
+            // Decode canvas data
+            $canvas = json_decode($canvasData, true);
+            if (!$canvas || !isset($canvas['objects'])) {
+                \Log::warning('Invalid canvas data for design ' . $designId . ' ' . $side);
+                return null;
+            }
+            
+            // Extract design elements (exclude background/shirt)
+            $designObjects = [];
+            foreach ($canvas['objects'] as $object) {
+                // Skip background objects (shirt images, backgrounds)
+                if (isset($object['type']) && $object['type'] === 'image') {
+                    // Check if this is a shirt background image
+                    if (isset($object['src']) && (
+                        strpos($object['src'], 'shirt') !== false ||
+                        strpos($object['src'], 'background') !== false ||
+                        strpos($object['src'], 'template') !== false
+                    )) {
+                        continue; // Skip shirt background
+                    }
+                }
+                
+                // Include all other objects (text, graphics, QR codes, etc.)
+                $designObjects[] = $object;
+            }
+            
+            if (empty($designObjects)) {
+                \Log::info('No design objects found for design ' . $designId . ' ' . $side);
+                return null;
+            }
+            
+            // Create a new canvas with only design elements
+            $designCanvas = [
+                'version' => $canvas['version'] ?? '5.3.0',
+                'objects' => $designObjects,
+                'background' => 'transparent', // Transparent background for design-only
+                'width' => $canvas['width'] ?? 260,
+                'height' => $canvas['height'] ?? 350
+            ];
+            
+            // For now, we'll create a placeholder image since we can't render canvas server-side
+            // In production, you'd use a service like Puppeteer or a canvas rendering service
+            $filename = $side . '_' . $designId . '_' . $timestamp . '.png';
+            $filepath = 'designs/' . $designId . '/photos/' . $filename;
+            
+            // Create a simple placeholder image for testing
+            // In production, this would be replaced with actual canvas rendering
+            $this->createPlaceholderImage($filepath, $designCanvas);
+            
+            return $filepath;
+            
+        } catch (\Exception $e) {
+            \Log::error('Error generating design image: ' . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Create a placeholder image for testing purposes.
+     * In production, this would be replaced with actual canvas rendering.
+     */
+    private function createPlaceholderImage($filepath, $canvasData)
+    {
+        try {
+            // Create a simple placeholder image
+            $width = $canvasData['width'] ?? 260;
+            $height = $canvasData['height'] ?? 350;
+            
+            // Create a transparent PNG image
+            $image = imagecreatetruecolor($width, $height);
+            imagesavealpha($image, true);
+            $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+            imagefill($image, 0, 0, $transparent);
+            
+            // Add a border to show the design area
+            $borderColor = imagecolorallocate($image, 200, 200, 200);
+            imagerectangle($image, 0, 0, $width - 1, $height - 1, $borderColor);
+            
+            // Add text indicating this is a design placeholder
+            $textColor = imagecolorallocate($image, 100, 100, 100);
+            $fontSize = 3;
+            $text = 'Design Only (' . count($canvasData['objects']) . ' elements)';
+            $textWidth = imagefontwidth($fontSize) * strlen($text);
+            $textX = ($width - $textWidth) / 2;
+            $textY = $height / 2;
+            imagestring($image, $fontSize, $textX, $textY, $text, $textColor);
+            
+            // Save the image
+            ob_start();
+            imagepng($image);
+            $imageData = ob_get_clean();
+            imagedestroy($image);
+            
+            // Save to storage
+            Storage::disk('public')->put($filepath, $imageData);
+            
+            \Log::info('Placeholder image created: ' . $filepath);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error creating placeholder image: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -449,5 +627,41 @@ class DesignManagementController extends Controller
         ];
         
         return $colorMap[$colorName] ?? '#000000';
+    }
+
+    /**
+     * Save a design-only image from base64 data.
+     */
+    private function saveDesignImage($base64Data, $designId, $side)
+    {
+        try {
+            // Remove data URL prefix if present
+            if (strpos($base64Data, 'data:image/png;base64,') === 0) {
+                $base64Data = substr($base64Data, 22);
+            }
+            
+            // Create design directory if it doesn't exist
+            $designDir = 'designs/' . $designId . '/photos';
+            if (!Storage::disk('public')->exists($designDir)) {
+                Storage::disk('public')->makeDirectory($designDir);
+            }
+            
+            // Generate filename
+            $timestamp = time();
+            $filename = $side . '_' . $designId . '_' . $timestamp . '.png';
+            $filepath = $designDir . '/' . $filename;
+            
+            // Decode and save the image
+            $imageData = base64_decode($base64Data);
+            Storage::disk('public')->put($filepath, $imageData);
+            
+            \Log::info('Design image saved: ' . $filepath);
+            
+            return $filepath;
+            
+        } catch (\Exception $e) {
+            \Log::error('Error saving design image: ' . $e->getMessage());
+            return null;
+        }
     }
 }

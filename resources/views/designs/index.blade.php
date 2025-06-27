@@ -117,6 +117,10 @@
                                                class="btn btn-outline-secondary">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            <a href="{{ route('orders.create', $design->id) }}" 
+                                               class="btn btn-outline-success">
+                                                <i class="bi bi-cart"></i>
+                                            </a>
                                             <button type="button" 
                                                     class="btn btn-outline-danger delete-design" 
                                                     data-design-id="{{ $design->id }}"

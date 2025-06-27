@@ -59,6 +59,17 @@
                         </div>
                         @endif
 
+                        <!-- User Type -->
+                        <div>
+                            <x-input-label for="user_type" :value="__('User Type')" />
+                            <select id="user_type" name="user_type" class="mt-1 block w-full">
+                                <option value="free" @if(old('user_type', $user->user_type) == 'free') selected @endif>Free</option>
+                                <option value="premium" @if(old('user_type', $user->user_type) == 'premium') selected @endif>Premium</option>
+                                <option value="partner" @if(old('user_type', $user->user_type) == 'partner') selected @endif>Partner</option>
+                            </select>
+                            <x-input-error class="mt-2" :messages="$errors->get('user_type')" />
+                        </div>
+
                         <!-- Password -->
                         <div>
                             <x-input-label for="password" :value="__('New Password')" />

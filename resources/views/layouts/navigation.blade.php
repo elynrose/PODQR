@@ -15,7 +15,12 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                        {{ __('Dashboard') }}
+                        <i class="bi bi-speedometer2"></i> {{ __('Dashboard') }}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('wall.*') ? 'active' : '' }}" href="{{ route('wall.index') }}">
+                        <i class="bi bi-grid"></i> {{ __('Wall') }}
                     </a>
                 </li>
                 <li class="nav-item">
@@ -30,13 +35,18 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('designs.index') ? 'active' : '' }}" href="{{ route('designs.index') }}">
-                        Designs
+                        <i class="bi bi-palette"></i> Designs
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}" href="{{ route('orders.history') }}">
+                        <i class="bi bi-cart"></i> Orders
                     </a>
                 </li>
                 @if(Auth::check() && Auth::user()->is_admin)
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.users*') ? 'active' : '' }}" href="{{ route('admin.users') }}">
-                        {{ __('Users') }}
+                        <i class="bi bi-people"></i> {{ __('Users') }}
                     </a>
                 </li>
                 <li class="nav-item">
@@ -62,12 +72,12 @@
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        {{ Auth::user()->name }}
+                        <i class="bi bi-person-circle"></i> {{ Auth::user()->name }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li>
                             <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                                {{ __('Profile') }}
+                                <i class="bi bi-person"></i> {{ __('Profile') }}
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>
@@ -75,7 +85,7 @@
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="dropdown-item">
-                                    {{ __('Log Out') }}
+                                    <i class="bi bi-box-arrow-right"></i> {{ __('Log Out') }}
                                 </button>
                             </form>
                         </li>
@@ -86,12 +96,12 @@
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('login') }}">
-                        {{ __('Login') }}
+                        <i class="bi bi-box-arrow-in-right"></i> {{ __('Login') }}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('register') }}">
-                        {{ __('Register') }}
+                        <i class="bi bi-person-plus"></i> {{ __('Register') }}
                     </a>
                 </li>
             </ul>

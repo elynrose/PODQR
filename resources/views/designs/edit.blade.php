@@ -1088,6 +1088,24 @@
                 backCanvasData = JSON.stringify(canvas_back.toJSON());
             }
             
+            // Generate design-only images (similar to download functionality)
+            var frontDesignImage = null;
+            var backDesignImage = null;
+            
+            if (typeof canvas_front !== 'undefined') {
+                frontDesignImage = canvas_front.toDataURL({
+                    format: 'png', 
+                    multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
+                });
+            }
+            
+            if (typeof canvas_back !== 'undefined') {
+                backDesignImage = canvas_back.toDataURL({
+                    format: 'png', 
+                    multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
+                });
+            }
+            
             // Prepare form data
             var formData = {
                 name: $('#designName').val(),
@@ -1098,6 +1116,8 @@
                 qr_code_id: qrCodeId,
                 front_canvas_data: frontCanvasData,
                 back_canvas_data: backCanvasData,
+                front_design_image: frontDesignImage,
+                back_design_image: backDesignImage,
                 status: 'saved',
                 cover_image_data: null // Will be populated if cover image is generated
             };

@@ -97,7 +97,7 @@
                     
                     <form id="qrForm">
                         <div class="controls-section">
-                            @if($isPremium)
+                            @if($userType !== 'free')
                                 <div class="form-group">
                                     <label for="qrText"><strong>QR Code Content:</strong></label>
                                     <input type="text" class="form-control" id="qrText" name="text" 
@@ -179,11 +179,22 @@
                             <button type="button" class="btn btn-success btn-sm" id="saveQrBtn">
                                 <i class="fa fa-save"></i> Save QR Code
                             </button>
-                            @if(!$isPremium)
+                            @if($userType === 'free')
                                 <div class="alert alert-warning mt-3">
                                     <i class="fa fa-star"></i> 
-                                    <strong>Upgrade to Premium:</strong> Create unlimited custom QR codes with any content!
+                                    <strong>Upgrade to Premium:</strong> Create up to 20 custom QR codes with any content!
                                     <br><small>Free users are limited to one profile QR code.</small>
+                                </div>
+                            @elseif($userType === 'premium')
+                                <div class="alert alert-info mt-3">
+                                    <i class="fa fa-crown"></i> 
+                                    <strong>Premium User:</strong> You can create up to 20 QR codes.
+                                    <br><small>Upgrade to Partner for unlimited QR codes and dashboard access.</small>
+                                </div>
+                            @elseif($userType === 'partner')
+                                <div class="alert alert-success mt-3">
+                                    <i class="fa fa-diamond"></i> 
+                                    <strong>Partner User:</strong> You have unlimited QR codes and full dashboard access!
                                 </div>
                             @endif
                         </div>
@@ -369,7 +380,7 @@
                 $('#qrActions').hide();
                 $('#qrColorPreview').css('background-color', '#000000');
                 $('#qrBackgroundPreview').css('background-color', '#FFFFFF');
-                @if(!$isPremium)
+                @if($userType === 'free')
                 // Restore the hidden field value for free users
                 $('#qrText').val('{{ $userUniqueUrl }}');
                 @endif
@@ -394,7 +405,7 @@
                     size: $('#qrSize').val(),
                     color: $('#qrColor').val(),
                     background: $('#qrBackground').val(),
-                    name: @if($isPremium) 'My QR Code' @else 'My Profile QR Code' @endif
+                    name: @if($userType === 'free') 'My Profile QR Code' @else 'My QR Code' @endif
                 };
                 $('#saveQrBtn').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
                 $.ajax({

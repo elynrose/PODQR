@@ -7,8 +7,10 @@ use App\Http\Controllers\DesignManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\WallController;
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\DalleController;
 
 // Public routes
 Route::get('/', function () {
@@ -36,6 +38,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/wall/posts', [WallController::class, 'getPosts'])->name('wall.posts');
     Route::get('/wall/{post}', [WallController::class, 'show'])->name('wall.show');
     Route::delete('/wall/{post}', [WallController::class, 'destroy'])->name('wall.destroy');
+    
+    // Admin Wall routes
+    Route::middleware(['admin'])->group(function () {
+        Route::get('/admin/wall', [WallController::class, 'adminIndex'])->name('admin.wall.index');
+        Route::get('/admin/wall/posts', [WallController::class, 'adminGetPosts'])->name('admin.wall.posts');
+        Route::delete('/admin/wall/{post}', [WallController::class, 'adminDestroy'])->name('admin.wall.destroy');
+    });
 });
 
 // Design Management routes
@@ -50,6 +59,28 @@ Route::middleware(['auth'])->group(function () {
     
     // Save design from designer page
     Route::post('/designs/save-from-designer', [DesignManagementController::class, 'saveFromDesigner'])->name('designs.save-from-designer');
+    
+    // Design preview for order form
+    Route::get('/designs/{design}/preview', [DesignManagementController::class, 'preview'])->name('designs.preview');
+});
+
+// Order routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/orders/create/{designId?}', [OrderController::class, 'showOrderForm'])->name('orders.create');
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders/history', [OrderController::class, 'orderHistory'])->name('orders.history');
+    Route::get('/orders/success', [OrderController::class, 'handleSuccess'])->name('orders.success');
+    Route::get('/orders/{order}', [OrderController::class, 'showOrder'])->name('orders.show');
+    Route::post('/orders/{order}/send-to-printful', [OrderController::class, 'sendToPrintful'])->name('orders.send-to-printful');
+    Route::post('/orders/{order}/cancel-discontinued', [OrderController::class, 'cancelOrderDueToDiscontinuedVariants'])->name('orders.cancel-discontinued');
+    Route::post('/orders/{order}/cancel-regional', [OrderController::class, 'cancelOrderDueToRegionalRestrictions'])->name('orders.cancel-regional');
+    
+    // API routes that need session authentication
+    Route::get('/api/products', [OrderController::class, 'getProducts'])->name('api.products');
+    Route::get('/api/load-more-products', [OrderController::class, 'loadMoreProducts'])->name('api.load-more-products');
+    Route::post('/api/calculate-total', [OrderController::class, 'calculateTotal'])->name('api.calculate-total');
+    Route::post('/api/sync-products', [OrderController::class, 'syncProducts'])->name('api.sync-products');
+    Route::post('/api/validate-product-shipping', [OrderController::class, 'validateProductShipping'])->name('api.validate-product-shipping');
 });
 
 // Public design gallery
@@ -94,6 +125,12 @@ Route::middleware(['auth', 'can:admin'])->group(function () {
         Route::get('/designs/{design}/edit', [DesignManagementController::class, 'edit'])->name('designs.edit');
         Route::put('/designs/{design}', [DesignManagementController::class, 'update'])->name('designs.update');
     });
+});
+
+// DALL-E AI Image Generation
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dalle/test', [DalleController::class, 'testApi'])->name('dalle.test');
+    Route::post('/dalle/generate', [DalleController::class, 'generateImage'])->name('dalle.generate');
 });
 
 require __DIR__.'/auth.php';

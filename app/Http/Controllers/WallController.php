@@ -133,4 +133,51 @@ class WallController extends Controller
             'posts' => $posts
         ]);
     }
+
+    /**
+     * Display the admin wall with all posts
+     */
+    public function adminIndex()
+    {
+        $posts = WallPost::with('user')
+            ->active()
+            ->recent(50)
+            ->get();
+
+        return view('admin.wall.index', compact('posts'));
+    }
+
+    /**
+     * Get all posts for admin AJAX loading
+     */
+    public function adminGetPosts(Request $request)
+    {
+        $posts = WallPost::with('user')
+            ->active()
+            ->recent(20)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'posts' => $posts
+        ]);
+    }
+
+    /**
+     * Delete any post (admin only)
+     */
+    public function adminDestroy(WallPost $post)
+    {
+        // Delete attachment file if exists
+        if ($post->attachment_path) {
+            Storage::disk('public')->delete($post->attachment_path);
+        }
+
+        $post->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Post deleted successfully'
+        ]);
+    }
 }

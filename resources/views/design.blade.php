@@ -376,6 +376,9 @@
                             <div class="add_qr btn-group">
                                 <button type="button" class="btn btn-default" data-bs-toggle="modal" data-bs-target="#qrSelectModal"><i class="fa fa-qrcode"></i>&nbsp;&nbsp;QR Code</button>
                             </div>
+                            <div class="add_ai_image btn-group">
+                                <button type="button" class="btn btn-default" data-bs-toggle="modal" data-bs-target="#dalleModal"><i class="fa fa-magic"></i>&nbsp;&nbsp;AI Art</button>
+                            </div>
 <!--<div class="add_album btn-group">
                                 <button type="button" class="btn btn-default" data-bs-toggle="modal" data-bs-target="#albumModal"><i class="fa fa-th"></i>&nbsp;&nbsp;Album</button>
                             </div>-->
@@ -619,6 +622,51 @@
                     </button>
                 </div>
             </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DALL-E AI Image Generation Modal -->
+    <div id="dalleModal" class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h4 class="modal-title"><i class="fa fa-magic"></i> AI Art Generator</h4>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+                <label for="aiPrompt" class="form-label">Describe the image you want to generate:</label>
+                <textarea class="form-control" id="aiPrompt" rows="3" placeholder="e.g., A cute red cartoon dog playing in a garden"></textarea>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="aiSize" class="form-label">Image Size:</label>
+                    <select class="form-select" id="aiSize">
+                        <option value="1024x1024">Square (1024x1024)</option>
+                        <option value="1792x1024">Landscape (1792x1024)</option>
+                        <option value="1024x1792">Portrait (1024x1792)</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="aiQuality" class="form-label">Quality:</label>
+                    <select class="form-select" id="aiQuality">
+                        <option value="standard">Standard</option>
+                        <option value="hd">HD</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary" id="testApiBtn">
+                    <i class="bi bi-wrench"></i> Test API
+                </button>
+                <button type="button" class="btn btn-primary" id="generateAiBtn">
+                    <i class="bi bi-magic"></i> Generate Image
+                </button>
+            </div>
+            <div id="aiStatus" class="mt-3" style="display: none;"></div>
           </div>
         </div>
       </div>
@@ -1149,6 +1197,12 @@
             var clothesTypeId = $('#clothesTypeSelect').val();
             var shirtSizeId = $('#shirtSizeSelect').val();
             var selectedColor = $('input[name="form_shirt_color"]:checked').val();
+            
+            // Provide default color if none selected
+            if (!selectedColor) {
+                selectedColor = 'Black'; // Default to black if no color selected
+            }
+            
             var qrCodeId = null;
             
             // Check if there's a QR code in the design
@@ -1174,6 +1228,24 @@
                 backCanvasData = JSON.stringify(canvas_back.toJSON());
             }
             
+            // Generate design-only images (similar to download functionality)
+            var frontDesignImage = null;
+            var backDesignImage = null;
+            
+            if (typeof canvas_front !== 'undefined') {
+                frontDesignImage = canvas_front.toDataURL({
+                    format: 'png', 
+                    multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
+                });
+            }
+            
+            if (typeof canvas_back !== 'undefined') {
+                backDesignImage = canvas_back.toDataURL({
+                    format: 'png', 
+                    multiplier: Math.ceil(10000 / (getZoom()*canvas_exportwidth/canvas_review_width)) / 10000
+                });
+            }
+            
             // Prepare form data
             var formData = {
                 clothes_type_id: clothesTypeId,
@@ -1184,6 +1256,8 @@
                 back_canvas_data: backCanvasData,
                 design_name: $('#designName').val(),
                 description: $('#designDescription').val(),
+                front_design_image: frontDesignImage,
+                back_design_image: backDesignImage,
                 cover_image_data: null // Will be populated if cover image is generated
             };
             
@@ -1295,6 +1369,110 @@
                     }
                 });
             }
+        });
+
+        // DALL-E AI Image Generation Functionality
+        $('#testApiBtn').on('click', function() {
+            var $btn = $(this);
+            var $status = $('#aiStatus');
+            
+            $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Testing...');
+            $status.html('<div class="alert alert-info"><i class="bi bi-info-circle"></i> Testing API connection...</div>').show();
+            
+            $.get('/dalle/test')
+                .done(function(response) {
+                    if (response.success) {
+                        var modelInfo = response.has_dalle3 ? 'DALL-E 3' : (response.has_dalle2 ? 'DALL-E 2' : 'No DALL-E models');
+                        $status.html('<div class="alert alert-success"><i class="bi bi-check-circle"></i> API Test Successful!<br>Available: ' + modelInfo + '</div>');
+                    } else {
+                        $status.html('<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> ' + response.message + '</div>');
+                    }
+                })
+                .fail(function(xhr) {
+                    var errorMsg = 'API test failed';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    $status.html('<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ' + errorMsg + '</div>');
+                })
+                .always(function() {
+                    $btn.prop('disabled', false).html('<i class="bi bi-wrench"></i> Test API');
+                });
+        });
+
+        $('#generateAiBtn').on('click', function() {
+            var prompt = $('#aiPrompt').val().trim();
+            var size = $('#aiSize').val();
+            var quality = $('#aiQuality').val();
+            
+            if (!prompt) {
+                alert('Please enter a description for the image you want to generate.');
+                return;
+            }
+            
+            if (prompt.length < 10) {
+                alert('Please provide a more detailed description (at least 10 characters).');
+                return;
+            }
+            
+            var $btn = $(this);
+            var $status = $('#aiStatus');
+            
+            // Show loading state
+            $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Generating...');
+            $status.html('<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Generating AI art... This may take 10-30 seconds.</div>').show();
+            
+            // Make API request
+            $.ajax({
+                url: '/dalle/generate',
+                method: 'POST',
+                data: {
+                    prompt: prompt,
+                    size: size,
+                    quality: quality,
+                    _token: $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $status.html('<div class="alert alert-success"><i class="bi bi-check-circle"></i> ' + response.message + '</div>');
+                        
+                        // Add image to canvas
+                        fabric.Image.fromURL(response.image_url, function(img) {
+                            // Scale image to reasonable size
+                            var maxSize = 200;
+                            var scale = Math.min(maxSize / img.width, maxSize / img.height);
+                            img.scale(scale);
+                            
+                            // Center image on canvas
+                            img.set({
+                                left: (canvas.width - img.width * scale) / 2,
+                                top: (canvas.height - img.height * scale) / 2
+                            });
+                            
+                            canvas.add(img);
+                            canvas.renderAll();
+                            
+                            // Close modal
+                            $('#dalleModal').modal('hide');
+                            
+                            // Show success message
+                            showNotification('AI image added to your design!', 'success');
+                        });
+                    } else {
+                        $status.html('<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ' + response.message + '</div>');
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'Error generating image. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    $status.html('<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ' + errorMsg + '</div>');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<i class="bi bi-magic"></i> Generate Image');
+                }
+            });
         });
     });
     </script>

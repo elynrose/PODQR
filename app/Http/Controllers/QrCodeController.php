@@ -17,11 +17,11 @@ class QrCodeController extends Controller
     {
         $user = Auth::user();
         $qrCodes = collect();
-        $isPremium = false;
+        $userType = 'free';
         $userUniqueUrl = '';
         
         if ($user) {
-            $isPremium = $user->isPremium();
+            $userType = $user->user_type;
             $userUniqueUrl = $user->getProfileUrl();
             $qrCodes = QrCodeModel::where('user_id', $user->id)
                 ->active()
@@ -29,7 +29,7 @@ class QrCodeController extends Controller
                 ->get();
         }
         
-        return view('qr-generator', compact('qrCodes', 'user', 'isPremium', 'userUniqueUrl'));
+        return view('qr-generator', compact('qrCodes', 'user', 'userType', 'userUniqueUrl'));
     }
 
     /**
@@ -56,14 +56,19 @@ class QrCodeController extends Controller
 
         // Check user limits
         $qrCodeCount = QrCodeModel::where('user_id', $user->id)->count();
-        $maxQrCodes = $user->is_premium ? 999999 : 1; // Free users: 1, Premium: unlimited
+        $maxQrCodes = $user->getQrCodeLimit();
         
         if ($qrCodeCount >= $maxQrCodes) {
+            $message = match($user->user_type) {
+                'partner' => 'You have reached the maximum number of QR codes.',
+                'premium' => 'You have reached the limit of 20 QR codes. Upgrade to Partner for unlimited QR codes.',
+                'free' => 'Free users can only create 1 QR code. Upgrade to Premium for 20 QR codes or Partner for unlimited QR codes.',
+                default => 'You have reached the maximum number of QR codes.'
+            };
+            
             return response()->json([
                 'success' => false,
-                'message' => $user->is_premium 
-                    ? 'You have reached the maximum number of QR codes.' 
-                    : 'Free users can only create 1 QR code. Upgrade to premium for unlimited QR codes.'
+                'message' => $message
             ], 403);
         }
 
@@ -259,13 +264,18 @@ class QrCodeController extends Controller
 
         // Check user limits for new QR codes
         $qrCodeCount = QrCodeModel::where('user_id', $user->id)->count();
-        $maxQrCodes = $user->isPremium() ? 999999 : 1;
+        $maxQrCodes = $user->getQrCodeLimit();
         
         if ($qrCodeCount >= $maxQrCodes) {
+            $message = match($user->user_type) {
+                'partner' => 'You have reached the maximum number of QR codes.',
+                'premium' => 'You have reached the limit of 20 QR codes. Upgrade to Partner for unlimited QR codes.',
+                'free' => 'Free users can only create 1 QR code. Upgrade to Premium for 20 QR codes or Partner for unlimited QR codes.',
+                default => 'You have reached the maximum number of QR codes.'
+            };
+            
             return redirect()->route('qr-generator')
-                ->with('error', $user->isPremium() 
-                    ? 'You have reached the maximum number of QR codes.' 
-                    : 'Free users can only create 1 QR code. Upgrade to premium for unlimited QR codes.');
+                ->with('error', $message);
         }
 
         $text = $request->input('text');
@@ -328,14 +338,19 @@ class QrCodeController extends Controller
 
         // Check user limits
         $qrCodeCount = QrCodeModel::where('user_id', $user->id)->count();
-        $maxQrCodes = $user->is_premium ? 999999 : 1; // Free users: 1, Premium: unlimited
+        $maxQrCodes = $user->getQrCodeLimit();
         
         if ($qrCodeCount >= $maxQrCodes) {
+            $message = match($user->user_type) {
+                'partner' => 'You have reached the maximum number of QR codes.',
+                'premium' => 'You have reached the limit of 20 QR codes. Upgrade to Partner for unlimited QR codes.',
+                'free' => 'Free users can only create 1 QR code. Upgrade to Premium for 20 QR codes or Partner for unlimited QR codes.',
+                default => 'You have reached the maximum number of QR codes.'
+            };
+            
             return response()->json([
                 'success' => false,
-                'message' => $user->is_premium 
-                    ? 'You have reached the maximum number of QR codes.' 
-                    : 'Free users can only create 1 QR code. Upgrade to premium for unlimited QR codes.'
+                'message' => $message
             ], 403);
         }
 

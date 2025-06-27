@@ -1,3 +1,14 @@
+Setting basic sizes and colors for products...
+Updated 102 t-shirt products with sizes
+Updated 8 DTFILM products with sizes
+Updated 49 EMBROIDERY products with sizes
+Updated 24 SUBLIMATION products with sizes
+Updated 102 t-shirt products with colors
+Updated 8 DTFILM products with colors
+Updated 49 EMBROIDERY products with colors
+Updated 24 SUBLIMATION products with colors
+Total updated: 183 products
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
