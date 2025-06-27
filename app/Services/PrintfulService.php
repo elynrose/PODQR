@@ -527,34 +527,80 @@ class PrintfulService
                 'first_product' => $products->first()
             ]);
 
-            // Filter for T-shirt products
+            // Filter for T-shirt products with more inclusive criteria
             $tshirtProducts = $products->filter(function ($product) {
                 $name = strtolower($product['name'] ?? '');
                 $type = strtolower($product['type'] ?? '');
+                $description = strtolower($product['description'] ?? '');
                 
-                // Check if it's a T-shirt product
+                // More inclusive T-shirt detection
                 $isTshirt = str_contains($name, 't-shirt') || 
                            str_contains($name, 'tshirt') || 
+                           str_contains($name, 'tee') ||
                            str_contains($type, 't-shirt') ||
-                           str_contains($type, 'tshirt');
+                           str_contains($type, 'tshirt') ||
+                           str_contains($type, 'tee') ||
+                           str_contains($description, 't-shirt') ||
+                           str_contains($description, 'tshirt') ||
+                           str_contains($description, 'tee');
                 
                 \Log::info('PrintfulService: Product filtering', [
+                    'product_id' => $product['id'] ?? 'unknown',
                     'product_name' => $product['name'] ?? 'unknown',
                     'product_type' => $product['type'] ?? 'unknown',
-                    'is_tshirt' => $isTshirt
+                    'product_description' => substr($description, 0, 100) . '...',
+                    'is_tshirt' => $isTshirt,
+                    'name_contains_tshirt' => str_contains($name, 't-shirt') || str_contains($name, 'tshirt') || str_contains($name, 'tee'),
+                    'type_contains_tshirt' => str_contains($type, 't-shirt') || str_contains($type, 'tshirt') || str_contains($type, 'tee'),
+                    'description_contains_tshirt' => str_contains($description, 't-shirt') || str_contains($description, 'tshirt') || str_contains($description, 'tee')
                 ]);
                 
                 return $isTshirt;
             })->take($limit);
 
             \Log::info('PrintfulService: T-shirt products filtered', [
-                'tshirt_products_count' => $tshirtProducts->count()
+                'tshirt_products_count' => $tshirtProducts->count(),
+                'total_products_checked' => $products->count()
             ]);
 
-            // If no T-shirt products found, return fallback
+            // If no T-shirt products found, log all products for debugging
             if ($tshirtProducts->isEmpty()) {
-                \Log::warning('PrintfulService: No T-shirt products found, using fallback');
-                return $this->getFallbackProducts($limit);
+                \Log::warning('PrintfulService: No T-shirt products found, logging all products for debugging');
+                $products->take(10)->each(function ($product) {
+                    \Log::info('PrintfulService: Available product', [
+                        'id' => $product['id'] ?? 'unknown',
+                        'name' => $product['name'] ?? 'unknown',
+                        'type' => $product['type'] ?? 'unknown',
+                        'description' => substr($product['description'] ?? '', 0, 100) . '...'
+                    ]);
+                });
+                
+                // For debugging: return first few products as T-shirts to see what's available
+                $debugProducts = $products->take($limit)->map(function ($product) {
+                    return [
+                        'printful_id' => $product['id'],
+                        'printful_product_id' => $product['id'],
+                        'name' => $product['name'] . ' (Debug)',
+                        'description' => $product['description'] ?? '',
+                        'type' => 'T-SHIRT',
+                        'brand' => $product['brand'] ?? 'Unknown',
+                        'model' => $product['model'] ?? '',
+                        'base_price' => 19.99,
+                        'image_url' => $product['image'] ?? null,
+                        'is_active' => true,
+                        'sizes' => ['S', 'M', 'L', 'XL'],
+                        'colors' => [
+                            ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                            ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                        ],
+                    ];
+                });
+                
+                \Log::warning('PrintfulService: Returning debug products instead of fallback', [
+                    'debug_products_count' => $debugProducts->count()
+                ]);
+                
+                return $debugProducts;
             }
 
             // Transform to our format
