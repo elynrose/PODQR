@@ -505,20 +505,49 @@ class PrintfulService
                 'api_key_preview' => substr($this->apiKey ?? '', 0, 10) . '...'
             ]);
 
-            // Get products from catalog with pagination
-            $response = Http::timeout(15)->withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-            ])->get($this->baseUrl . '/catalog/products', [
-                'limit' => 50, // Get more products to filter from
-                'offset' => $offset
-            ]);
+            // Check if API key is configured
+            if (empty($this->apiKey)) {
+                \Log::warning('PrintfulService: No API key configured, returning fallback products');
+                return $this->getFallbackProducts($limit);
+            }
+
+            // Get products from catalog with shorter timeout and retry
+            $response = null;
+            $attempts = 0;
+            $maxAttempts = 2;
+            
+            while ($attempts < $maxAttempts) {
+                try {
+                    $response = Http::timeout(8)->retry(1, 1000)->withHeaders([
+                        'Authorization' => 'Bearer ' . $this->apiKey,
+                    ])->get($this->baseUrl . '/catalog/products', [
+                        'limit' => 20, // Reduced limit to prevent timeouts
+                        'offset' => $offset
+                    ]);
+                    break; // Success, exit retry loop
+                } catch (\Exception $e) {
+                    $attempts++;
+                    \Log::warning("PrintfulService: API attempt {$attempts} failed", [
+                        'error' => $e->getMessage(),
+                        'attempts_remaining' => $maxAttempts - $attempts
+                    ]);
+                    
+                    if ($attempts >= $maxAttempts) {
+                        \Log::error('PrintfulService: All API attempts failed, returning fallback products');
+                        return $this->getFallbackProducts($limit);
+                    }
+                    
+                    // Wait before retry
+                    usleep(500000); // 0.5 seconds
+                }
+            }
 
             \Log::info('PrintfulService: API response received', [
                 'status_code' => $response->status(),
                 'response_body_length' => strlen($response->body()),
-                'request_limit' => 50,
+                'request_limit' => 20,
                 'request_offset' => $offset,
-                'response_preview' => substr($response->body(), 0, 500) . '...'
+                'response_preview' => substr($response->body(), 0, 200) . '...'
             ]);
 
             if (!$response->successful()) {
@@ -533,7 +562,7 @@ class PrintfulService
             \Log::info('PrintfulService: Raw products data', [
                 'total_products' => $products->count(),
                 'first_product' => $products->first(),
-                'product_names' => $products->pluck('name')->take(5)->toArray()
+                'product_names' => $products->pluck('name')->take(3)->toArray()
             ]);
 
             // Filter for T-shirt products with more inclusive criteria
@@ -553,17 +582,6 @@ class PrintfulService
                            str_contains($description, 'tshirt') ||
                            str_contains($description, 'tee');
                 
-                \Log::info('PrintfulService: Product filtering', [
-                    'product_id' => $product['id'] ?? 'unknown',
-                    'product_name' => $product['name'] ?? 'unknown',
-                    'product_type' => $product['type'] ?? 'unknown',
-                    'product_description' => substr($description, 0, 100) . '...',
-                    'is_tshirt' => $isTshirt,
-                    'name_contains_tshirt' => str_contains($name, 't-shirt') || str_contains($name, 'tshirt') || str_contains($name, 'tee'),
-                    'type_contains_tshirt' => str_contains($type, 't-shirt') || str_contains($type, 'tshirt') || str_contains($type, 'tee'),
-                    'description_contains_tshirt' => str_contains($description, 't-shirt') || str_contains($description, 'tshirt') || str_contains($description, 'tee')
-                ]);
-                
                 return $isTshirt;
             })->take($limit);
 
@@ -573,52 +591,15 @@ class PrintfulService
                 'tshirt_product_names' => $tshirtProducts->pluck('name')->toArray()
             ]);
 
-            // If no T-shirt products found, log all products for debugging
+            // If no T-shirt products found, return fallback immediately
             if ($tshirtProducts->isEmpty()) {
-                \Log::warning('PrintfulService: No T-shirt products found, logging all products for debugging');
-                $products->take(10)->each(function ($product) {
-                    \Log::info('PrintfulService: Available product', [
-                        'id' => $product['id'] ?? 'unknown',
-                        'name' => $product['name'] ?? 'unknown',
-                        'type' => $product['type'] ?? 'unknown',
-                        'description' => substr($product['description'] ?? '', 0, 100) . '...'
-                    ]);
-                });
-                
-                // For debugging: return first few products as T-shirts to see what's available
-                $debugProducts = $products->take($limit)->map(function ($product) {
-                    return [
-                        'printful_id' => $product['id'],
-                        'printful_product_id' => $product['id'],
-                        'name' => $product['name'] . ' (Debug)',
-                        'description' => $product['description'] ?? '',
-                        'type' => 'T-SHIRT',
-                        'brand' => $product['brand'] ?? 'Unknown',
-                        'model' => $product['model'] ?? '',
-                        'base_price' => 19.99,
-                        'image_url' => $product['image'] ?? null,
-                        'is_active' => true,
-                        'sizes' => ['S', 'M', 'L', 'XL'],
-                        'colors' => [
-                            ['color_name' => 'White', 'color_codes' => ['#ffffff']],
-                            ['color_name' => 'Black', 'color_codes' => ['#000000']],
-                        ],
-                    ];
-                });
-                
-                \Log::warning('PrintfulService: Returning debug products instead of fallback', [
-                    'debug_products_count' => $debugProducts->count(),
-                    'debug_product_names' => $debugProducts->pluck('name')->toArray()
-                ]);
-                
-                return $debugProducts;
+                \Log::warning('PrintfulService: No T-shirt products found, returning fallback products');
+                return $this->getFallbackProducts($limit);
             }
 
-            // Transform to our format with optimized variant fetching
+            // Transform to our format with minimal variant fetching
             $formattedProducts = $tshirtProducts->map(function ($product) {
-                // Use cached variants or fetch with timeout
-                $variants = $this->getCachedProductVariants($product['id']);
-                
+                // Use simple defaults instead of fetching variants to prevent timeouts
                 $formatted = [
                     'printful_id' => $product['id'],
                     'printful_product_id' => $product['id'],
@@ -627,19 +608,20 @@ class PrintfulService
                     'type' => 'T-SHIRT',
                     'brand' => $product['brand'] ?? 'Unknown',
                     'model' => $product['model'] ?? '',
-                    'base_price' => $this->getBasePriceFromVariants($variants),
+                    'base_price' => 19.99, // Default price instead of fetching variants
                     'image_url' => $product['image'] ?? null,
                     'is_active' => true,
-                    'sizes' => $this->getSizesFromVariants($variants),
-                    'colors' => $this->getColorsFromVariants($variants),
+                    'sizes' => ['S', 'M', 'L', 'XL'], // Default sizes
+                    'colors' => [
+                        ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                        ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ], // Default colors
                 ];
                 
                 \Log::info('PrintfulService: Formatted product', [
                     'product_id' => $product['id'],
                     'product_name' => $product['name'],
-                    'variants_count' => count($variants),
-                    'image_url' => $product['image'] ?? 'null',
-                    'formatted' => $formatted
+                    'image_url' => $product['image'] ?? 'null'
                 ]);
                 
                 return $formatted;
@@ -844,5 +826,108 @@ class PrintfulService
 
         $colorName = strtolower($colorName);
         return $colorMap[$colorName] ?? '#ffffff';
+    }
+
+    /**
+     * Get basic T-shirt products without API calls (for when API is down)
+     */
+    public function getBasicTshirtProducts($limit = 10)
+    {
+        \Log::info('PrintfulService: Using basic T-shirt products (no API calls)');
+        
+        return collect([
+            [
+                'printful_id' => 'basic-1',
+                'printful_product_id' => 'basic-1',
+                'name' => 'Premium Cotton T-Shirt',
+                'description' => 'High-quality cotton T-shirt perfect for custom designs',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Premium Cotton',
+                'base_price' => 19.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Navy', 'color_codes' => ['#000080']],
+                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
+                ],
+            ],
+            [
+                'printful_id' => 'basic-2',
+                'printful_product_id' => 'basic-2',
+                'name' => 'Classic Fit T-Shirt',
+                'description' => 'Comfortable classic fit T-shirt',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Classic Fit',
+                'base_price' => 17.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['S', 'M', 'L', 'XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Red', 'color_codes' => ['#ff0000']],
+                    ['color_name' => 'Blue', 'color_codes' => ['#0000ff']],
+                ],
+            ],
+            [
+                'printful_id' => 'basic-3',
+                'printful_product_id' => 'basic-3',
+                'name' => 'Slim Fit T-Shirt',
+                'description' => 'Modern slim fit T-shirt',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Slim Fit',
+                'base_price' => 21.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['S', 'M', 'L', 'XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
+                ],
+            ],
+            [
+                'printful_id' => 'basic-4',
+                'printful_product_id' => 'basic-4',
+                'name' => 'Heavy Cotton T-Shirt',
+                'description' => 'Durable heavy cotton T-shirt',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'Heavy Cotton',
+                'base_price' => 23.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['M', 'L', 'XL', '2XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Navy', 'color_codes' => ['#000080']],
+                ],
+            ],
+            [
+                'printful_id' => 'basic-5',
+                'printful_product_id' => 'basic-5',
+                'name' => 'V-Neck T-Shirt',
+                'description' => 'Stylish V-neck T-shirt',
+                'type' => 'T-SHIRT',
+                'brand' => 'Printful',
+                'model' => 'V-Neck',
+                'base_price' => 20.99,
+                'image_url' => null,
+                'is_active' => true,
+                'sizes' => ['S', 'M', 'L', 'XL'],
+                'colors' => [
+                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
+                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
+                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
+                ],
+            ]
+        ])->take($limit);
     }
 } 

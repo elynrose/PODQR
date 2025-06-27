@@ -216,8 +216,22 @@ class OrderController extends Controller
         // Get user's preferred location from profile, fallback to request parameter
         $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
         
-        // Get products directly from Printful API
-        $products = $this->printfulService->getTshirtProducts(12);
+        try {
+            // Get products directly from Printful API
+            $products = $this->printfulService->getTshirtProducts(12);
+            
+            if ($products && $products->count() > 0) {
+                Log::info('OrderController: Successfully fetched ' . $products->count() . ' products from Printful API');
+            } else {
+                // Fallback to basic products
+                Log::warning('OrderController: API returned no products, using basic T-shirt products');
+                $products = $this->printfulService->getBasicTshirtProducts(12);
+            }
+        } catch (\Exception $e) {
+            Log::error('OrderController: Error fetching products from API: ' . $e->getMessage());
+            // Ultimate fallback: basic products
+            $products = $this->printfulService->getBasicTshirtProducts(12);
+        }
 
         // Filter by design color if design exists
         if ($design && $design->color_code) {
@@ -1573,6 +1587,49 @@ class OrderController extends Controller
                 'type' => 'products_error',
                 'trace' => $e->getTraceAsString()
             ], 500);
+        }
+    }
+
+    private function getProductsForOrder()
+    {
+        try {
+            Log::info('OrderController: About to fetch T-shirt products from Printful API');
+            
+            // Try to get products from database first
+            $products = Product::where('type', 'T-SHIRT')
+                ->where('is_active', true)
+                ->get();
+            
+            if ($products->count() > 0) {
+                Log::info('OrderController: Found ' . $products->count() . ' T-shirt products in database');
+                return $this->formatProductsForOrder($products);
+            }
+            
+            // If no products in database, try Printful API
+            Log::info('OrderController: No products in database, trying Printful API');
+            $printfulService = new PrintfulService();
+            $products = $printfulService->getTshirtProducts(10, 0);
+            
+            if ($products && $products->count() > 0) {
+                Log::info('OrderController: Successfully fetched ' . $products->count() . ' products from Printful API');
+                return $products;
+            }
+            
+            // Final fallback: use basic products without any API calls
+            Log::warning('OrderController: API failed, using basic T-shirt products');
+            return $printfulService->getBasicTshirtProducts(10);
+            
+        } catch (\Exception $e) {
+            Log::error('OrderController: Error fetching products: ' . $e->getMessage());
+            
+            // Ultimate fallback: basic products
+            try {
+                $printfulService = new PrintfulService();
+                return $printfulService->getBasicTshirtProducts(10);
+            } catch (\Exception $fallbackError) {
+                Log::error('OrderController: Even fallback failed: ' . $fallbackError->getMessage());
+                return collect([]);
+            }
         }
     }
 }
