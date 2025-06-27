@@ -97,14 +97,37 @@ class OrderController extends Controller
         // Get user's preferred location from profile, fallback to request parameter
         $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
         
-        // Get T-shirt products filtered by user's location
-        $products = Product::whereJsonContains('metadata->type', 'T-shirt')
-            ->whereJsonContains('metadata->location', $userLocation)
+        // Get T-shirt products - use the type field directly instead of metadata
+        $products = Product::where('type', 'T-shirt')
             ->orderBy('name')
             ->take(12)
             ->get();
 
-        return view('orders.create', compact('design', 'products', 'userLocation'));
+        // Extract unique types, sizes, and colors from products for filters
+        $types = $products->pluck('type')->unique()->filter()->values();
+        $sizes = collect();
+        $colors = collect();
+        
+        foreach ($products as $product) {
+            if ($product->sizes) {
+                $sizes = $sizes->merge($product->sizes);
+            }
+            if ($product->colors) {
+                // Extract color names from the color objects
+                foreach ($product->colors as $color) {
+                    if (is_array($color) && isset($color['color_name'])) {
+                        $colors->push($color['color_name']);
+                    } elseif (is_string($color)) {
+                        $colors->push($color);
+                    }
+                }
+            }
+        }
+        
+        $sizes = $sizes->unique()->filter()->values();
+        $colors = $colors->unique()->filter()->values();
+
+        return view('orders.create', compact('design', 'products', 'userLocation', 'types', 'sizes', 'colors'));
     }
 
     /**
@@ -118,8 +141,7 @@ class OrderController extends Controller
         // Get user's preferred location from profile, fallback to request parameter
         $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
         
-        $query = Product::whereJsonContains('metadata->type', 'T-shirt')
-            ->whereJsonContains('metadata->location', $userLocation);
+        $query = Product::where('type', 'T-shirt');
 
         // Filter by design color if design exists
         if ($design && $design->color_code) {
