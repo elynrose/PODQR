@@ -36,27 +36,40 @@ class SeedTestDesigns extends Command
             return;
         }
 
+        // Get first clothes type
+        $clothesType = \App\Models\ClothesType::first();
+        if (!$clothesType) {
+            $this->error('No clothes types found. Please run clothes type seeder first.');
+            return;
+        }
+
         $designs = [
             [
                 'name' => 'Test Design 1',
                 'description' => 'A test design for ordering',
                 'user_id' => $user->id,
+                'clothes_type_id' => $clothesType->id,
                 'color_code' => '#ff0000',
-                'is_active' => true,
+                'status' => 'published',
+                'is_public' => true,
             ],
             [
                 'name' => 'Test Design 2',
                 'description' => 'Another test design for ordering',
                 'user_id' => $user->id,
+                'clothes_type_id' => $clothesType->id,
                 'color_code' => '#0000ff',
-                'is_active' => true,
+                'status' => 'published',
+                'is_public' => true,
             ],
             [
                 'name' => 'Test Design 3',
                 'description' => 'Third test design for ordering',
                 'user_id' => $user->id,
+                'clothes_type_id' => $clothesType->id,
                 'color_code' => '#00ff00',
-                'is_active' => true,
+                'status' => 'published',
+                'is_public' => true,
             ],
         ];
 
