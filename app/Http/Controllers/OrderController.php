@@ -112,7 +112,9 @@ class OrderController extends Controller
             ]);
 
             // Extract unique types, sizes, and colors from products for filters
-            $types = $products->pluck('type')->unique()->filter()->values();
+            $types = $products->pluck('type')->unique()->filter(function($type) {
+                return is_string($type);
+            })->values();
             $sizes = collect();
             $colors = collect();
             
@@ -123,7 +125,7 @@ class OrderController extends Controller
                 if (isset($product['colors']) && is_array($product['colors'])) {
                     // Extract color names from the color objects
                     foreach ($product['colors'] as $color) {
-                        if (is_array($color) && isset($color['color_name'])) {
+                        if (is_array($color) && isset($color['color_name']) && is_string($color['color_name'])) {
                             $colors->push($color['color_name']);
                         } elseif (is_string($color)) {
                             $colors->push($color);
@@ -132,8 +134,12 @@ class OrderController extends Controller
                 }
             }
             
-            $sizes = $sizes->unique()->filter()->values();
-            $colors = $colors->unique()->filter()->values();
+            $sizes = $sizes->unique()->filter(function($size) {
+                return is_string($size);
+            })->values();
+            $colors = $colors->unique()->filter(function($color) {
+                return is_string($color);
+            })->values();
 
             // Debug: Log final data
             \Log::info('OrderController: Final data prepared', [

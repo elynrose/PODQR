@@ -50,7 +50,7 @@
                                                     <select class="form-select form-select-sm" id="typeFilter">
                                                         <option value="">All Types</option>
                                                         @foreach($types as $type)
-                                                            <option value="{{ $type }}">{{ ucfirst(str_replace('-', ' ', $type)) }}</option>
+                                                            <option value="{{ is_string($type) ? $type : 'T-SHIRT' }}">{{ is_string($type) ? ucfirst(str_replace('-', ' ', $type)) : 'T-Shirt' }}</option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -59,7 +59,7 @@
                                                     <select class="form-select form-select-sm" id="sizeFilter">
                                                         <option value="">All Sizes</option>
                                                         @foreach($sizes as $size)
-                                                            <option value="{{ $size }}">{{ $size }}</option>
+                                                            <option value="{{ is_string($size) ? $size : 'M' }}">{{ is_string($size) ? $size : 'M' }}</option>
                                                         @endforeach
                                                     </select>
                                                 </div>
@@ -68,7 +68,7 @@
                                                     <select class="form-select form-select-sm" id="colorFilter">
                                                         <option value="">All Colors</option>
                                                         @foreach($colors as $color)
-                                                            <option value="{{ $color }}">{{ $color }}</option>
+                                                            <option value="{{ is_string($color) ? $color : 'White' }}">{{ is_string($color) ? $color : 'White' }}</option>
                                                         @endforeach
                                                     </select>
                                                 </div>
