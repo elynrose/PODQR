@@ -105,17 +105,17 @@
                                             <div class="row" id="productGrid">
                                                 @forelse($products as $product)
                                                     <div class="col-md-4 mb-3 product-card" 
-                                                         data-product-id="{{ is_array($product) ? $product['printful_id'] : $product->id }}"
-                                                         data-type="{{ is_array($product) ? $product['type'] : $product->type }}"
+                                                         data-product-id="{{ is_array($product) ? (is_string($product['printful_id']) ? $product['printful_id'] : 'unknown') : $product->id }}"
+                                                         data-type="{{ is_array($product) ? (is_string($product['type']) ? $product['type'] : 'T-SHIRT') : $product->type }}"
                                                          data-sizes="{{ is_array($product) ? json_encode($product['sizes']) : json_encode($product->sizes) }}"
                                                          data-colors="{{ is_array($product) ? json_encode($product['colors']) : json_encode($product->colors) }}"
-                                                         data-price="{{ is_array($product) ? $product['base_price'] : $product->base_price }}">
+                                                         data-price="{{ is_array($product) ? (is_numeric($product['base_price']) ? $product['base_price'] : 19.99) : $product->base_price }}">
                                                         <div class="card h-100 product-card-inner">
                                                             <div class="card-body d-flex flex-column">
                                                                 <div class="text-center mb-3">
-                                                                    @if(is_array($product) ? $product['image_url'] : $product->image_url)
-                                                                        <img src="{{ is_array($product) ? $product['image_url'] : $product->image_url }}" 
-                                                                             alt="{{ is_array($product) ? $product['name'] : $product->name }}" 
+                                                                    @if(is_array($product) ? (is_string($product['image_url']) ? $product['image_url'] : null) : $product->image_url)
+                                                                        <img src="{{ is_array($product) ? (is_string($product['image_url']) ? $product['image_url'] : '') : $product->image_url }}" 
+                                                                             alt="{{ is_array($product) ? (is_string($product['name']) ? $product['name'] : 'Product') : $product->name }}" 
                                                                              class="img-fluid" 
                                                                              style="max-height: 150px; object-fit: contain;">
                                                                     @else
@@ -124,11 +124,11 @@
                                                                         </div>
                                                                     @endif
                                                                 </div>
-                                                                <h6 class="card-title">{{ is_array($product) ? $product['name'] : $product->name }}</h6>
-                                                                <p class="card-text text-muted small">{{ is_array($product) ? $product['type'] : $product->type }}</p>
+                                                                <h6 class="card-title">{{ is_array($product) ? (is_string($product['name']) ? $product['name'] : 'Product') : $product->name }}</h6>
+                                                                <p class="card-text text-muted small">{{ is_array($product) ? (is_string($product['type']) ? $product['type'] : 'T-Shirt') : $product->type }}</p>
                                                                 <div class="mt-auto">
                                                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                        <span class="fw-bold text-primary">${{ number_format(is_array($product) ? $product['base_price'] : $product->base_price, 2) }}</span>
+                                                                        <span class="fw-bold text-primary">${{ number_format(is_array($product) ? (is_numeric($product['base_price']) ? $product['base_price'] : 19.99) : $product->base_price, 2) }}</span>
                                                                         <button type="button" class="btn btn-outline-primary btn-sm select-product">
                                                                             Select
                                                                         </button>
@@ -136,7 +136,7 @@
                                                                     
                                                                     <div class="mt-3">
                                                                         @php
-                                                                            $sizes = is_array($product) ? $product['sizes'] : $product->sizes;
+                                                                            $sizes = is_array($product) ? (is_array($product['sizes']) ? $product['sizes'] : ['M']) : $product->sizes;
                                                                         @endphp
                                                                         @if($sizes && count($sizes) > 0)
                                                                             <select class="form-select form-select-sm size-select mb-2" disabled>
