@@ -644,6 +644,15 @@ class PrintfulService
                     $sizes = $usaVariants->pluck('size')->filter()->unique()->values()->toArray();
                     $colors = $usaVariants->pluck('color')->filter()->unique()->values()->toArray();
                     
+                    \Log::info('PrintfulService: Extracted sizes and colors', [
+                        'product_id' => $product['id'],
+                        'sizes' => $sizes,
+                        'colors' => $colors,
+                        'colors_types' => collect($colors)->map(function($color) {
+                            return gettype($color);
+                        })->toArray()
+                    ]);
+                    
                     // Get base price from first variant
                     $basePrice = $usaVariants->first()['retail_price'] ?? $product['price'] ?? 19.99;
                     
@@ -898,6 +907,15 @@ class PrintfulService
             'orange' => '#ffa500',
             'brown' => '#a52a2a',
         ];
+
+        // Ensure colorName is a string before calling strtolower
+        if (!is_string($colorName)) {
+            \Log::warning('PrintfulService: getColorCode received non-string colorName', [
+                'colorName' => $colorName,
+                'type' => gettype($colorName)
+            ]);
+            return '#ffffff'; // Default to white
+        }
 
         $colorName = strtolower($colorName);
         return $colorMap[$colorName] ?? '#ffffff';
