@@ -82,7 +82,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Order routes
-Route::get('/orders/create/{designId?}', [OrderController::class, 'showOrderForm'])->name('orders.create');
+Route::get('/orders/create/{designId?}', [OrderController::class, 'showOrderForm'])->name('orders.create')->middleware('auth');
 Route::get('/api/products', [OrderController::class, 'getProducts'])->name('api.products');
 
 Route::middleware(['auth'])->group(function () {

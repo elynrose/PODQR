@@ -198,13 +198,20 @@
                                                     <label class="form-label">Your Designs</label>
                                                     <select class="form-select" id="designSelect" name="design_id">
                                                         <option value="">No Design (Plain Product)</option>
-                                                        @foreach(auth()->user()->designs()->whereNotNull('front_image_path')->get() as $userDesign)
-                                                            <option value="{{ $userDesign->id }}" 
-                                                                    {{ $design && $design->id == $userDesign->id ? 'selected' : '' }}>
-                                                                {{ $userDesign->name }}
-                                                            </option>
-                                                        @endforeach
+                                                        @if(auth()->check())
+                                                            @foreach(auth()->user()->designs()->whereNotNull('front_image_path')->get() as $userDesign)
+                                                                <option value="{{ $userDesign->id }}" 
+                                                                        {{ $design && $design->id == $userDesign->id ? 'selected' : '' }}>
+                                                                    {{ $userDesign->name }}
+                                                                </option>
+                                                            @endforeach
+                                                        @else
+                                                            <option value="" disabled>Please log in to see your designs</option>
+                                                        @endif
                                                     </select>
+                                                    @if(!auth()->check())
+                                                        <small class="text-muted">You need to be logged in to use your own designs</small>
+                                                    @endif
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div id="designPreview" class="text-center" style="display: none;">
