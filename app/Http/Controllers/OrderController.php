@@ -14,6 +14,7 @@ use App\Services\PrintfulService;
 use App\Services\StripeService;
 use App\Jobs\SyncPrintfulProducts;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
 {
@@ -488,7 +489,7 @@ class OrderController extends Controller
                         'design_description' => $design->description,
                         'front_image_path' => $design->front_image_path,
                         'back_image_path' => $design->back_image_path,
-                        'print_file_url' => $design->front_image_path ? (new \App\Services\CloudStorageService())->getUrl($design->front_image_path) : null,
+                        'print_file_url' => $design->front_image_path ? Storage::url($design->front_image_path) : null,
                     ];
                     \Log::info('Creating order item with design:', [
                         'design_id' => $design->id,
@@ -1160,7 +1161,7 @@ class OrderController extends Controller
                         'design_description' => $design->description,
                         'front_image_path' => $design->front_image_path,
                         'back_image_path' => $design->back_image_path,
-                        'print_file_url' => $design->front_image_path ? (new \App\Services\CloudStorageService())->getUrl($design->front_image_path) : null,
+                        'print_file_url' => $design->front_image_path ? Storage::url($design->front_image_path) : null,
                     ];
                     \Log::info('Creating order item with design:', [
                         'design_id' => $design->id,
