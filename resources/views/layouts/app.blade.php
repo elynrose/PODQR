@@ -124,7 +124,17 @@
     </head>
     <body class="bg-light">
         <div class="min-vh-100 d-flex flex-column">
-            @include('layouts.navigation')
+            <!-- NAVIGATION DEBUG START -->
+            <div style="background: green; color: white; padding: 5px; text-align: center;">BEFORE NAVIGATION INCLUDE</div>
+            @try
+                @include('layouts.navigation')
+            @catch(Exception $e)
+                <div style="background: red; color: white; padding: 10px; text-align: center;">
+                    NAVIGATION ERROR: {{ $e->getMessage() }}
+                </div>
+            @endtry
+            <div style="background: green; color: white; padding: 5px; text-align: center;">AFTER NAVIGATION INCLUDE</div>
+            <!-- NAVIGATION DEBUG END -->
 
             <!-- Page Heading -->
             @if (isset($header))

@@ -1,3 +1,6 @@
+<!-- NAVIGATION FILE LOADED SUCCESSFULLY -->
+<div style="background: purple; color: white; padding: 5px; text-align: center; font-weight: bold;">NAVIGATION FILE IS LOADING</div>
+
 <!-- NAVIGATION DEBUG: Navigation file is loading -->
 <div style="background: red; color: white; padding: 5px; text-align: center;">NAVIGATION LOADED</div>
 
