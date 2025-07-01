@@ -200,7 +200,7 @@
                                     @endif
                                     <div class="flex-1">
                                         <h3 class="font-semibold text-lg">{{ $item->design ? $item->design->name : 'Product Only' }}</h3>
-                                        <p class="text-gray-600">{{ $item->product->name }}</p>
+                                        <p class="text-gray-600">{{ $item->name }}</p>
                                         <div class="mt-2 space-y-1 text-sm text-gray-600">
                                             <p><span class="font-medium">Size:</span> {{ $item->size }}</p>
                                             <p><span class="font-medium">Color:</span> {{ $item->color ?: 'Default' }}</p>

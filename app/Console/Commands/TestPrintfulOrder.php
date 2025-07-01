@@ -74,7 +74,7 @@ class TestPrintfulOrder extends Command
 
         $this->info("\nOrder items:");
         foreach ($order->orderItems as $item) {
-            $this->info("- {$item->product->name} ({$item->size}, {$item->color}) x{$item->quantity}");
+            $this->info("- {$item->name} ({$item->size}, {$item->color}) x{$item->quantity}");
             $this->info("  Printful Variant ID: {$item->printful_variant_id}");
         }
 
@@ -220,7 +220,7 @@ class TestPrintfulOrder extends Command
                 $designData = json_decode($item->design_data, true);
                 
                 // Use the printful_id (variant ID) directly from the product
-                $variantId = $item->product->printful_id;
+                $variantId = $item->printful_variant_id ?? $item->variant_id ?? null;
                 
                 // Prioritize the actual design image (just the artwork) over product image
                 $fileUrl = null;
@@ -253,7 +253,7 @@ class TestPrintfulOrder extends Command
                 $color = $item->color;
                 
                 if (!$variantId) {
-                    $this->error("No Printful variant ID found for product: " . $item->product->id);
+                    $this->error("No Printful variant ID found for product: " . $item->product_id);
                     continue;
                 }
                 if (!$size) {

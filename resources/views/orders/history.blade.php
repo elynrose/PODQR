@@ -134,7 +134,7 @@
                                             <div class="flex-1">
                                                 <h5 class="font-medium">{{ $item->design ? $item->design->name : 'Product Only' }}</h5>
                                                 <p class="text-sm text-gray-600">
-                                                    {{ $item->product->name }} - {{ $item->size }}, {{ $item->color }}
+                                                    {{ $item->name }} - {{ $item->size }}, {{ $item->color }}
                                                 </p>
                                                 <p class="text-sm text-gray-500">Qty: {{ $item->quantity }}</p>
                                             </div>

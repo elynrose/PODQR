@@ -497,8 +497,9 @@ class OrderController extends Controller
                     ]);
                 } else {
                     $designData = [
-                        'product_name' => is_array($item['product']) ? $item['product']['name'] : ($item['product']->name ?? 'Unknown Product'),
-                        'product_type' => is_array($item['product']) ? $item['product']['type'] : ($item['product']->type ?? 'Unknown Type'),
+                        'product_name' => $item['name'],
+                        'product_type' => 'T-shirt',
+                        'variant_id' => $item['product_id'],
                     ];
                     \Log::info('Creating order item without design', [
                         'product_name' => $designData['product_name'],
@@ -509,8 +510,8 @@ class OrderController extends Controller
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'design_id' => $design ? $design->id : null,
-                    'product_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->id,
-                    'printful_variant_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->printful_id,
+                    'product_id' => $item['product_id'],
+                    'printful_variant_id' => $item['product_id'],
                     'size' => $item['size'],
                     'color' => $item['color'],
                     'quantity' => $item['quantity'],
@@ -592,14 +593,14 @@ class OrderController extends Controller
                 \Log::info('OrderController: Design data from JSON', ['design_data' => $designData]);
                 
                 // Use the printful_id (variant ID) directly from the product
-                $variantId = $item->product->printful_id ?? $item->printful_variant_id;
+                $variantId = $item->printful_variant_id ?? null;
                 
                 // Validate the variant ID before using it
                 if (!$variantId) {
                     \Log::error("No Printful variant ID found for order item", [
                         'order_item_id' => $item->id,
                         'product_id' => $item->product_id,
-                        'product_printful_id' => $item->product->printful_id ?? 'null',
+                        'product_printful_id' => $item->product_id ?? 'null',
                         'printful_variant_id' => $item->printful_variant_id ?? 'null'
                     ]);
                     continue;
@@ -668,7 +669,7 @@ class OrderController extends Controller
                 ]);
                 
                 if (!$variantId) {
-                    \Log::error("No Printful variant ID found for product: " . $item->product->id);
+                    \Log::error("No Printful variant ID found for product: " . $item->product_id);
                     continue;
                 }
                 if (!$fileUrl) {
@@ -692,7 +693,7 @@ class OrderController extends Controller
                 }
                 
                 \Log::info('OrderController: File type for T-shirt', [
-                    'product_id' => $item->product->id,
+                    'product_id' => $item->product_id,
                     'file_url' => $fileUrl,
                     'selected_file_type' => $fileType
                 ]);
@@ -1354,7 +1355,7 @@ class OrderController extends Controller
                         'design_name' => $item->design ? $item->design->name : 'No design',
                         'design_front_image' => $item->design ? $item->design->front_image_path : 'No front image',
                         'design_back_image' => $item->design ? $item->design->back_image_path : 'No back image',
-                        'product_name' => $item->product ? $item->product->name : 'No product',
+                        'product_name' => $item->name ?? 'No product',
                         'printful_variant_id' => $item->printful_variant_id
                     ];
                 })->toArray()
