@@ -387,6 +387,96 @@ class PrintfulService
     }
 
     /**
+     * Check if a variant ID exists and is valid
+     */
+    public function validateVariantId($variantId)
+    {
+        try {
+            $variant = $this->getVariant($variantId);
+            
+            if (!$variant) {
+                return [
+                    'exists' => false,
+                    'message' => 'Variant ID not found',
+                    'variant_id' => $variantId
+                ];
+            }
+
+            // Check if variant is discontinued
+            if (isset($variant['discontinued']) && $variant['discontinued']) {
+                return [
+                    'exists' => false,
+                    'message' => 'Variant is discontinued',
+                    'variant_id' => $variantId,
+                    'variant_name' => $variant['title'] ?? 'Unknown'
+                ];
+            }
+
+            // Check if variant is available
+            if (isset($variant['is_enabled']) && !$variant['is_enabled']) {
+                return [
+                    'exists' => false,
+                    'message' => 'Variant is not enabled',
+                    'variant_id' => $variantId,
+                    'variant_name' => $variant['title'] ?? 'Unknown'
+                ];
+            }
+
+            return [
+                'exists' => true,
+                'message' => 'Variant is valid and available',
+                'variant_id' => $variantId,
+                'variant_name' => $variant['title'] ?? 'Unknown',
+                'variant_data' => $variant
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Printful validateVariantId Exception: ' . $e->getMessage(), ['variant_id' => $variantId]);
+            return [
+                'exists' => false,
+                'message' => 'Error validating variant: ' . $e->getMessage(),
+                'variant_id' => $variantId
+            ];
+        }
+    }
+
+    /**
+     * Validate multiple variant IDs and return results
+     */
+    public function validateVariantIds($variantIds)
+    {
+        $results = [];
+        
+        foreach ($variantIds as $variantId) {
+            $results[$variantId] = $this->validateVariantId($variantId);
+        }
+        
+        return $results;
+    }
+
+    /**
+     * Get only valid variant IDs from a list
+     */
+    public function getValidVariantIds($variantIds)
+    {
+        $validIds = [];
+        
+        foreach ($variantIds as $variantId) {
+            $validation = $this->validateVariantId($variantId);
+            if ($validation['exists']) {
+                $validIds[] = $variantId;
+            } else {
+                \Log::warning('PrintfulService: Invalid variant ID found', [
+                    'variant_id' => $variantId,
+                    'message' => $validation['message']
+                ]);
+            }
+        }
+        
+        return $validIds;
+    }
+
+    /**
      * Test order creation to validate shipping compatibility
      * This method validates shipping without actually creating an order
      */
@@ -714,6 +804,16 @@ class PrintfulService
                     // Skip products without valid variant IDs
                     if (!$variantId) {
                         \Log::warning("PrintfulService: Product {$product['id']} has no valid variant ID, skipping");
+                        continue;
+                    }
+                    
+                    // Validate the variant ID before using it
+                    $variantValidation = $this->validateVariantId($variantId);
+                    if (!$variantValidation['exists']) {
+                        \Log::warning("PrintfulService: Invalid variant ID for product {$product['id']}", [
+                            'variant_id' => $variantId,
+                            'message' => $variantValidation['message']
+                        ]);
                         continue;
                     }
                     
