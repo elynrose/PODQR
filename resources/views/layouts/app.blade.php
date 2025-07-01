@@ -126,13 +126,13 @@
         <div class="min-vh-100 d-flex flex-column">
             <!-- NAVIGATION DEBUG START -->
             <div style="background: green; color: white; padding: 5px; text-align: center;">BEFORE NAVIGATION INCLUDE</div>
-            @try
-                @include('layouts.navigation')
-            @catch(Exception $e)
-                <div style="background: red; color: white; padding: 10px; text-align: center;">
-                    NAVIGATION ERROR: {{ $e->getMessage() }}
-                </div>
-            @endtry
+            @php
+                try {
+                    echo view('layouts.navigation')->render();
+                } catch (Exception $e) {
+                    echo '<div style="background: red; color: white; padding: 10px; text-align: center;">NAVIGATION ERROR: ' . $e->getMessage() . '</div>';
+                }
+            @endphp
             <div style="background: green; color: white; padding: 5px; text-align: center;">AFTER NAVIGATION INCLUDE</div>
             <!-- NAVIGATION DEBUG END -->
 
