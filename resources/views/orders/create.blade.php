@@ -81,7 +81,7 @@
                                                         <option value="AU" {{ $userLocation == 'AU' ? 'selected' : '' }}>Australia</option>
                                                     </select>
                                                     <small class="text-muted">Products will be filtered based on your location</small>
-                                                    @if(auth()->check() && !auth()->user()->country_code)
+                                                    @if(auth()->check() && auth()->user() && !auth()->user()->country_code)
                                                         <div class="alert alert-info mt-2">
                                                             <small>
                                                                 <i class="fas fa-info-circle"></i>
@@ -198,7 +198,7 @@
                                                     <label class="form-label">Your Designs</label>
                                                     <select class="form-select" id="designSelect" name="design_id">
                                                         <option value="">No Design (Plain Product)</option>
-                                                        @if(auth()->check())
+                                                        @if(auth()->check() && auth()->user())
                                                             @foreach(auth()->user()->designs()->whereNotNull('front_image_path')->get() as $userDesign)
                                                                 <option value="{{ $userDesign->id }}" 
                                                                         {{ $design && $design->id == $userDesign->id ? 'selected' : '' }}>
