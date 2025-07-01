@@ -1013,11 +1013,12 @@ class OrderController extends Controller
             $items = json_decode($request->items, true);
             $shippingAddress = json_decode($request->shipping_address, true);
             
-            \Log::info('Decoded data:', [
-                'design_id' => $request->design_id,
-                'items_count' => count($items),
-                'shipping_address' => $shippingAddress
-            ]);
+                    \Log::info('Decoded data:', [
+            'design_id' => $request->design_id,
+            'items_count' => count($items),
+            'items' => $items, // Log the actual items data
+            'shipping_address' => $shippingAddress
+        ]);
 
             // Validate shipping address
             $requiredAddressFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zip', 'country'];

@@ -493,6 +493,14 @@
     }
 
     function updateProductData() {
+        // Get the design color if a design is selected
+        const designSelect = document.getElementById('designSelect');
+        let selectedDesignColor = 'White'; // Default color
+        if (designSelect && designSelect.value) {
+            // Use the design color from the backend
+            selectedDesignColor = designColor || 'White';
+        }
+        
         selectedProducts.forEach((product, productId) => {
             const card = document.querySelector(`[data-product-id="${productId}"]`);
             if (card) {
@@ -503,7 +511,7 @@
                 // Set size if dropdown exists, otherwise use 'One Size'
                 product.size = sizeSelect ? sizeSelect.value : 'One Size';
                 // Color is now determined by the design, not by dropdown selection
-                // product.color = colorSelect ? colorSelect.value : 'Default'; // Commented out
+                product.color = selectedDesignColor; // Set color based on design
                 product.quantity = parseInt(quantityInput.value) || 1;
             }
         });
@@ -659,6 +667,7 @@
         const card = document.createElement('div');
         card.className = 'col-md-4 mb-3 product-card';
         card.setAttribute('data-product-id', product.id);
+        card.setAttribute('data-variant-id', product.variant_id || product.id); // Add variant ID
         card.setAttribute('data-type', product.type);
         card.setAttribute('data-sizes', JSON.stringify(product.sizes || []));
         card.setAttribute('data-colors', JSON.stringify(product.colors || []));
@@ -820,14 +829,17 @@
         // Add selected products
         const items = [];
         selectedProducts.forEach(product => {
-            items.push({
+            const item = {
                 product_id: product.id,
                 variant_id: product.variant_id, // Use variant ID for Printful
                 size: product.size,
                 color: product.color,
                 quantity: product.quantity
-            });
+            };
+            items.push(item);
+            console.log('Adding item to order:', item);
         });
+        console.log('Final items array:', items);
         formData.append('items', JSON.stringify(items));
         
         // Add shipping address
