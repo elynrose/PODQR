@@ -130,18 +130,18 @@
                                         
                                         // Get front image
                                         if ($item->design && $item->design->front_image_path) {
-                                            $frontImageUrl = asset('storage/' . $item->design->front_image_path);
+                                            $frontImageUrl = \App\Services\CloudStorageService::getUrl($item->design->front_image_path);
                                         } elseif (!empty($designData['print_file_url'])) {
                                             $frontImageUrl = $designData['print_file_url'];
                                         } elseif (!empty($designData['front_image_path'])) {
-                                            $frontImageUrl = asset('storage/' . $designData['front_image_path']);
+                                            $frontImageUrl = \App\Services\CloudStorageService::getUrl($designData['front_image_path']);
                                         }
                                         
                                         // Get back image
                                         if ($item->design && $item->design->back_image_path) {
-                                            $backImageUrl = asset('storage/' . $item->design->back_image_path);
+                                            $backImageUrl = \App\Services\CloudStorageService::getUrl($item->design->back_image_path);
                                         } elseif (!empty($designData['back_image_path'])) {
-                                            $backImageUrl = asset('storage/' . $designData['back_image_path']);
+                                            $backImageUrl = \App\Services\CloudStorageService::getUrl($designData['back_image_path']);
                                         }
                                         
                                         $hasImages = $frontImageUrl || $backImageUrl;
