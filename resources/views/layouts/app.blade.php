@@ -155,6 +155,24 @@
             console.log('Bootstrap version:', typeof bootstrap !== 'undefined' ? 'Loaded' : 'Not loaded');
             console.log('Navigation element:', document.querySelector('nav'));
             console.log('Auth check:', {{ Auth::check() ? 'true' : 'false' }});
+            
+            // Check if navigation is visible
+            setTimeout(function() {
+                const nav = document.querySelector('nav');
+                if (nav) {
+                    console.log('Navigation found:', nav);
+                    console.log('Navigation display:', window.getComputedStyle(nav).display);
+                    console.log('Navigation visibility:', window.getComputedStyle(nav).visibility);
+                    console.log('Navigation height:', nav.offsetHeight);
+                } else {
+                    console.error('Navigation element not found!');
+                }
+                
+                // Check Bootstrap components
+                if (typeof bootstrap !== 'undefined') {
+                    console.log('Bootstrap components available:', Object.keys(bootstrap));
+                }
+            }, 1000);
         </script>
         
         <!-- Global Alert System -->
