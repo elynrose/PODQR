@@ -208,7 +208,7 @@ class TestPrintfulOrder extends Command
 
         try {
             // Load the design relationship to access design images
-            $order->load(['orderItems.product', 'orderItems.design']);
+            $order->load(['orderItems.design']);
             
             $printfulItems = [];
             

@@ -573,8 +573,8 @@ class OrderController extends Controller
             \Log::info('OrderController: Starting createPrintfulOrder for order ' . $order->id);
             \Log::info('OrderController: Order has ' . $order->orderItems->count() . ' items');
             
-            // Load the product relationship for all order items
-            $order->load('orderItems.product');
+            // Load the design relationship for all order items
+            $order->load('orderItems.design');
             
             foreach ($order->orderItems as $item) {
                 \Log::info('OrderController: Processing order item ' . $item->id);
@@ -777,7 +777,7 @@ class OrderController extends Controller
     public function orderHistory()
     {
         $orders = Auth::user()->orders()
-            ->with(['orderItems.product', 'orderItems.design'])
+            ->with(['orderItems.design'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -789,7 +789,7 @@ class OrderController extends Controller
      */
     public function showOrder($orderId)
     {
-        $order = Order::with(['orderItems.product', 'orderItems.design'])
+        $order = Order::with(['orderItems.design'])
             ->where('user_id', Auth::id())
             ->findOrFail($orderId);
 
@@ -1342,7 +1342,7 @@ class OrderController extends Controller
             \Log::info('Manually sending order to Printful', ['order_id' => $order->id]);
             
             // Load the design relationship to access design images
-            $order->load(['orderItems.product', 'orderItems.design']);
+            $order->load(['orderItems.design']);
             
             \Log::info('Order items loaded', [
                 'order_id' => $order->id,
