@@ -14,6 +14,16 @@ use App\Http\Controllers\DalleController;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 
+// Test route to check if Laravel is working
+Route::get('/test', function () {
+    return response()->json([
+        'status' => 'Laravel is working',
+        'auth_check' => auth()->check(),
+        'user' => auth()->user() ? auth()->user()->name : 'Not logged in',
+        'timestamp' => now()
+    ]);
+});
+
 // Public routes
 Route::get('/', function () {
     return view('welcome');
