@@ -12,9 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('order_items', function (Blueprint $table) {
-            // Drop the foreign key constraint first
-            $table->dropForeign(['product_id']);
-            
             // Change product_id to be nullable and text type to store Printful IDs
             $table->text('product_id')->nullable()->change();
         });

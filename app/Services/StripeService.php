@@ -206,7 +206,7 @@ class StripeService
             $lineItems = [];
             
             foreach ($orderData['items'] as $item) {
-                $productName = is_array($item['product']) ? $item['product']['name'] : $item['product']->name;
+                $productName = $item['name'] ?? 'T-Shirt';
                 $lineItems[] = [
                     'price_data' => [
                         'currency' => 'usd',
