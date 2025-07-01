@@ -658,9 +658,11 @@ class PrintfulService
                     
                     // Format the product data
                     $formattedProduct = [
+                        'id' => $variant['product_id'], // Add id field for consistency
                         'printful_id' => $variant['product_id'],
                         'variant_id' => $variant['id'],
                         'name' => $product['display_name'] ?? $variant['display_name'],
+                        'type' => 'T-SHIRT', // Add type field
                         'base_price' => $variant['price'],
                         'image_url' => $product['image_url'] ?? $variant['image_url'],
                         'sizes' => [$variant['size']],
@@ -834,6 +836,7 @@ class PrintfulService
         
         return collect([
             [
+                'id' => '493', // Add id field for consistency
                 'printful_id' => '493', // Valid Printful product ID
                 'printful_product_id' => '493',
                 'variant_id' => '12585', // Valid variant ID for this product
@@ -936,6 +939,7 @@ class PrintfulService
         
         return collect([
             [
+                'id' => '493', // Add id field for consistency
                 'printful_id' => '493', // Valid Printful product ID
                 'printful_product_id' => '493',
                 'variant_id' => '12585', // Valid variant ID for this product
