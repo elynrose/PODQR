@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Design;
 use App\Models\Product;
 use App\Services\PrintfulService;
+use Illuminate\Support\Facades\Storage;
 
 class TestPrintfulImage extends Command
 {
@@ -51,8 +52,8 @@ class TestPrintfulImage extends Command
         $this->line("Back image: {$design->back_image_path}");
         
         // Check if we're in a local environment
-        $frontUrl = $design->front_image_path ? asset('storage/' . $design->front_image_path) : null;
-        $backUrl = $design->back_image_path ? asset('storage/' . $design->back_image_path) : null;
+        $frontUrl = $design->front_image_path ? Storage::url($design->front_image_path) : null;
+        $backUrl = $design->back_image_path ? Storage::url($design->back_image_path) : null;
         
         if (str_contains($frontUrl, 'localhost') || str_contains($backUrl, 'localhost')) {
             $this->warn("⚠️  Localhost URLs detected. These will be skipped as Printful requires public URLs.");
@@ -66,14 +67,14 @@ class TestPrintfulImage extends Command
         
         // Only add local images if they're accessible via public URL
         if ($design->front_image_path) {
-            $frontUrl = asset('storage/' . $design->front_image_path);
+            $frontUrl = Storage::url($design->front_image_path);
             if (!str_contains($frontUrl, 'localhost') && !str_contains($frontUrl, '127.0.0.1')) {
                 $testUrls['front_image'] = $frontUrl;
             }
         }
         
         if ($design->back_image_path) {
-            $backUrl = asset('storage/' . $design->back_image_path);
+            $backUrl = Storage::url($design->back_image_path);
             if (!str_contains($backUrl, 'localhost') && !str_contains($backUrl, '127.0.0.1')) {
                 $testUrls['back_image'] = $backUrl;
             }

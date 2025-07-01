@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class QrCode extends Model
 {
@@ -46,10 +47,7 @@ class QrCode extends Model
      */
     public function getFileUrlAttribute()
     {
-        if ($this->file_path) {
-            return asset('storage/' . $this->file_path);
-        }
-        return null;
+        return $this->file_path ? Storage::url($this->file_path) : null;
     }
 
     /**

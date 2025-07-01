@@ -621,15 +621,13 @@ class OrderController extends Controller
                 // Prioritize the actual design image (just the artwork) over product image
                 $fileUrl = null;
                 if ($item->design && $item->design->front_image_path) {
-                    // Use cloud storage URL for design image
-                    $cloudStorage = new \App\Services\CloudStorageService();
-                    $fileUrl = $cloudStorage->getUrl($item->design->front_image_path);
-                    \Log::info('OrderController: Using design front image from cloud storage', ['file_url' => $fileUrl]);
+                    // Use storage URL for design image
+                    $fileUrl = Storage::url($item->design->front_image_path);
+                    \Log::info('OrderController: Using design front image from storage', ['file_url' => $fileUrl]);
                 } elseif (isset($designData['front_image_path']) && $designData['front_image_path']) {
                     // Fallback to design data if design relationship is not loaded
-                    $cloudStorage = new \App\Services\CloudStorageService();
-                    $fileUrl = $cloudStorage->getUrl($designData['front_image_path']);
-                    \Log::info('OrderController: Using design data front image from cloud storage', ['file_url' => $fileUrl]);
+                    $fileUrl = Storage::url($designData['front_image_path']);
+                    \Log::info('OrderController: Using design data front image from storage', ['file_url' => $fileUrl]);
                 } elseif (isset($designData['print_file_url']) && $designData['print_file_url']) {
                     // Last fallback to print_file_url if it exists
                     $fileUrl = $designData['print_file_url'];

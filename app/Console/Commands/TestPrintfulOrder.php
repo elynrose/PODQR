@@ -10,6 +10,7 @@ use App\Models\Design;
 use App\Models\User;
 use App\Services\PrintfulService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class TestPrintfulOrder extends Command
 {
@@ -140,7 +141,7 @@ class TestPrintfulOrder extends Command
 
         // Use a valid image URL for the print file (use product image if no design image)
         $printFileUrl = $design->front_image_path
-            ? asset('storage/' . $design->front_image_path)
+                            ? Storage::url($design->front_image_path)
             : ($product->image_url ?? ($product->metadata['printful_variant']['image_url'] ?? null));
 
         // Create test order
@@ -226,11 +227,11 @@ class TestPrintfulOrder extends Command
                 $fileUrl = null;
                 if ($item->design && $item->design->front_image_path) {
                     // Use the actual design image (just the artwork)
-                    $fileUrl = asset('storage/' . $item->design->front_image_path);
+                    $fileUrl = Storage::url($item->design->front_image_path);
                     $this->info("Using design front image: {$fileUrl}");
                 } elseif (isset($designData['front_image_path']) && $designData['front_image_path']) {
                     // Fallback to design data if design relationship is not loaded
-                    $fileUrl = asset('storage/' . $designData['front_image_path']);
+                    $fileUrl = Storage::url($designData['front_image_path']);
                     $this->info("Using design data front image: {$fileUrl}");
                 } elseif (isset($designData['print_file_url']) && $designData['print_file_url']) {
                     // Last fallback to print_file_url if it exists

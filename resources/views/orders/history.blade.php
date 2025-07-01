@@ -89,18 +89,18 @@
                                                 
                                                 // Get front image
                                                 if ($item->design && $item->design->front_image_path) {
-                                                    $frontImageUrl = \App\Services\CloudStorageService::getUrl($item->design->front_image_path);
+                                                    $frontImageUrl = Storage::url($item->design->front_image_path);
                                                 } elseif (!empty($designData['front_image_path'])) {
-                                                    $frontImageUrl = \App\Services\CloudStorageService::getUrl($designData['front_image_path']);
+                                                    $frontImageUrl = Storage::url($designData['front_image_path']);
                                                 } elseif (!empty($designData['print_file_url'])) {
                                                     $frontImageUrl = $designData['print_file_url'];
                                                 }
                                                 
                                                 // Get back image
                                                 if ($item->design && $item->design->back_image_path) {
-                                                    $backImageUrl = \App\Services\CloudStorageService::getUrl($item->design->back_image_path);
+                                                    $backImageUrl = Storage::url($item->design->back_image_path);
                                                 } elseif (!empty($designData['back_image_path'])) {
-                                                    $backImageUrl = \App\Services\CloudStorageService::getUrl($designData['back_image_path']);
+                                                    $backImageUrl = Storage::url($designData['back_image_path']);
                                                 }
                                             @endphp
                                             

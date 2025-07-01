@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Design;
 use App\Services\PrintfulService;
+use Illuminate\Support\Facades\Storage;
 
 class TestProductionImage extends Command
 {
@@ -65,13 +66,13 @@ class TestProductionImage extends Command
         $testUrls = [];
         
         if ($design->front_image_path) {
-            $frontUrl = asset('storage/' . $design->front_image_path);
+            $frontUrl = Storage::url($design->front_image_path);
             $testUrls['front_image'] = $frontUrl;
             $this->line("Front image URL: {$frontUrl}");
         }
         
         if ($design->back_image_path) {
-            $backUrl = asset('storage/' . $design->back_image_path);
+            $backUrl = Storage::url($design->back_image_path);
             $testUrls['back_image'] = $backUrl;
             $this->line("Back image URL: {$backUrl}");
         }
