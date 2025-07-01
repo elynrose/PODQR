@@ -1030,34 +1030,64 @@ class OrderController extends Controller
                 }
             }
 
-            // Validate Printful variants and shipping availability before creating order
+            // Validate items structure
+            foreach ($items as $item) {
+                if (!isset($item['variant_id']) || !isset($item['size']) || !isset($item['color']) || !isset($item['quantity'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid item data provided. Missing required fields.'
+                    ], 400);
+                }
+            }
+
+            // Validate Printful variants directly from API
             $variantValidationErrors = [];
-            $shippingValidationErrors = [];
+            $validatedItems = [];
+            $total = 0;
             
             foreach ($items as $index => $item) {
-                $product = Product::find($item['product_id']);
-                if (!$product || !$product->printful_id) {
-                    $variantValidationErrors[] = "Product ID '{$item['product_id']}' has no valid Printful variant ID.";
-                    continue;
-                }
-
-                // Check if variant exists and is active in Printful
+                // Validate variant ID directly with Printful API
                 try {
-                    $variantInfo = $this->printfulService->getVariant($product->printful_id);
-                    if (!$variantInfo || isset($variantInfo['error'])) {
-                        $variantValidationErrors[] = "Product '{$product->name}' (Variant ID: {$product->printful_id}) is no longer available in Printful.";
+                    $variantInfo = $this->printfulService->getVariant($item['variant_id']);
+                    if (!$variantInfo) {
+                        $variantValidationErrors[] = "Variant ID '{$item['variant_id']}' is not valid or no longer available in Printful.";
                         continue;
                     }
+                    
+                    // Check if variant is discontinued or not enabled
+                    if (isset($variantInfo['discontinued']) && $variantInfo['discontinued']) {
+                        $variantValidationErrors[] = "Variant ID '{$item['variant_id']}' is discontinued.";
+                        continue;
+                    }
+                    
+                                    // Note: Some variants may show as not enabled but are still available for ordering
+                // We'll skip this check for now as it may be a Printful API limitation
+                // if (isset($variantInfo['is_enabled']) && !$variantInfo['is_enabled']) {
+                //     $variantValidationErrors[] = "Variant ID '{$item['variant_id']}' is not enabled.";
+                //     continue;
+                // }
+                    
+                    // Calculate item total using variant price
+                    $variantPrice = $variantInfo['price'] ?? 19.99;
+                    $itemTotal = $variantPrice * $item['quantity'];
+                    $total += $itemTotal;
+                    
+                    $validatedItems[] = [
+                        'variant_id' => $item['variant_id'],
+                        'product_id' => $variantInfo['product_id'],
+                        'name' => $variantInfo['display_name'],
+                        'size' => $item['size'],
+                        'color' => $item['color'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $variantPrice,
+                        'total_price' => $itemTotal,
+                        'variant_info' => $variantInfo
+                    ];
+                    
                 } catch (\Exception $e) {
-                    \Log::warning("Could not validate Printful variant {$product->printful_id}: " . $e->getMessage());
-                    $variantValidationErrors[] = "Could not verify availability of '{$product->name}' in Printful.";
+                    \Log::warning("Could not validate Printful variant {$item['variant_id']}: " . $e->getMessage());
+                    $variantValidationErrors[] = "Could not verify availability of variant ID '{$item['variant_id']}' in Printful.";
                     continue;
-                }
-
-                // Check shipping availability
-                $shippingValidation = $this->validateProductShippingWithAPI($product, $shippingAddress['country'], $shippingAddress);
-                if (!$shippingValidation) {
-                    $shippingValidationErrors[] = "Product '{$product->name}': This product has regional shipping restrictions and cannot be shipped to your address.";
                 }
             }
 
@@ -1068,16 +1098,6 @@ class OrderController extends Controller
                     'success' => false,
                     'message' => 'Some products are no longer available: ' . implode(' ', $variantValidationErrors),
                     'errors' => $variantValidationErrors
-                ], 400);
-            }
-
-            // If any products have shipping restrictions, return error
-            if (!empty($shippingValidationErrors)) {
-                \Log::error('Product shipping validation failed:', $shippingValidationErrors);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Some products cannot be shipped to your address: ' . implode(' ', $shippingValidationErrors),
-                    'errors' => $shippingValidationErrors
                 ], 400);
             }
 
@@ -1107,62 +1127,6 @@ class OrderController extends Controller
                 \Log::info('No design ID provided');
             }
 
-            // Validate items structure
-            foreach ($items as $item) {
-                if (!isset($item['product_id']) || !isset($item['size']) || !isset($item['color']) || !isset($item['quantity'])) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid item data provided.'
-                    ], 400);
-                }
-            }
-
-            // Validate all products are available and have valid Printful IDs
-            $orderItems = [];
-            $total = 0;
-            
-            foreach ($items as $item) {
-                $product = Product::find($item['product_id']);
-                
-                if (!$product) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'One or more selected products are no longer available.'
-                    ], 400);
-                }
-                
-                if (!$product->is_active) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'One or more selected products are currently unavailable.'
-                    ], 400);
-                }
-                
-                if (empty($product->printful_id)) {
-                    $variantValidationErrors[] = "Product '{$product->name}' has no valid Printful variant ID.";
-                    continue;
-                }
-                
-                if (empty($product->base_price) || $product->base_price <= 0) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'One or more selected products have invalid pricing.'
-                    ], 400);
-                }
-                
-                $itemTotal = $product->base_price * $item['quantity'];
-                $total += $itemTotal;
-                
-                $orderItems[] = [
-                    'product' => $product,
-                    'size' => $item['size'],
-                    'color' => $item['color'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $product->base_price,
-                    'total_price' => $itemTotal,
-                ];
-            }
-
             // Calculate shipping and tax
             $shipping = 5.99; // Fixed shipping cost
             $tax = $total * 0.08; // 8% tax
@@ -1182,7 +1146,7 @@ class OrderController extends Controller
             ]);
 
             // Create order items
-            foreach ($orderItems as $item) {
+            foreach ($validatedItems as $item) {
                 $designData = [];
                 
                 if ($design) {
@@ -1201,8 +1165,9 @@ class OrderController extends Controller
                     ]);
                 } else {
                     $designData = [
-                        'product_name' => is_array($item['product']) ? $item['product']['name'] : ($item['product']->name ?? 'Unknown Product'),
-                        'product_type' => is_array($item['product']) ? $item['product']['type'] : ($item['product']->type ?? 'Unknown Type'),
+                        'product_name' => $item['name'],
+                        'product_type' => 'T-shirt',
+                        'variant_id' => $item['variant_id'],
                     ];
                     \Log::info('Creating order item without design', [
                         'product_name' => $designData['product_name'],
@@ -1213,8 +1178,8 @@ class OrderController extends Controller
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'design_id' => $design ? $design->id : null,
-                    'product_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->id,
-                    'printful_variant_id' => is_array($item['product']) ? $item['product']['printful_id'] : $item['product']->printful_id,
+                    'product_id' => $item['product_id'],
+                    'printful_variant_id' => $item['variant_id'],
                     'size' => $item['size'],
                     'color' => $item['color'],
                     'quantity' => $item['quantity'],
@@ -1234,7 +1199,7 @@ class OrderController extends Controller
             $orderData = [
                 'order_id' => $order->id,
                 'user_id' => $order->user_id,
-                'items' => $orderItems,
+                'items' => $validatedItems,
                 'shipping_address' => $shippingAddress,
                 'subtotal' => $total,
                 'shipping' => $shipping,

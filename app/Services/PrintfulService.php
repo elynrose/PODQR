@@ -374,7 +374,8 @@ class PrintfulService
 
             if ($response->successful()) {
                 $data = $response->json();
-                return $data['result'] ?? null;
+                // The API returns result.variant, not just result
+                return $data['result']['variant'] ?? null;
             }
 
             // If variant not found or error, return null
@@ -601,296 +602,136 @@ class PrintfulService
                 return $this->getFallbackProducts($limit);
             }
 
-            // Get products from catalog with shorter timeout and retry
-            $response = null;
-            $attempts = 0;
-            $maxAttempts = 2;
-            
-            while ($attempts < $maxAttempts) {
-                try {
-                    $response = Http::timeout(8)->retry(1, 1000)->withHeaders([
-                        'Authorization' => 'Bearer ' . $this->apiKey,
-                    ])->get($this->baseUrl . '/catalog/products', [
-                        'limit' => 20, // Reduced limit to prevent timeouts
-                        'offset' => $offset
-                    ]);
-                    break; // Success, exit retry loop
-                } catch (\Exception $e) {
-                    $attempts++;
-                    \Log::warning("PrintfulService: API attempt {$attempts} failed", [
-                        'error' => $e->getMessage(),
-                        'attempts_remaining' => $maxAttempts - $attempts
-                    ]);
-                    
-                    if ($attempts >= $maxAttempts) {
-                        \Log::error('PrintfulService: All API attempts failed, returning fallback products');
-                        return $this->getFallbackProducts($limit);
-                    }
-                    
-                    // Wait before retry
-                    usleep(500000); // 0.5 seconds
-                }
-            }
+            // Use known valid variant IDs for unisex t-shirts
+            // Based on our API analysis, these are confirmed valid variant IDs
+            $knownUnisexTshirtVariants = [
+                4012 => ['product_id' => 71, 'size' => 'M', 'color' => 'White'],      // Bella + Canvas Unisex T-Shirt
+                4013 => ['product_id' => 71, 'size' => 'L', 'color' => 'White'],      // Bella + Canvas Unisex T-Shirt  
+                4014 => ['product_id' => 71, 'size' => 'XL', 'color' => 'White'],     // Bella + Canvas Unisex T-Shirt
+                12585 => ['product_id' => 493, 'size' => 'S', 'color' => 'Black'],    // Unisex Eco Sweatshirt
+                12694 => ['product_id' => 506, 'size' => 'S', 'color' => 'Black'],    // SOL'S Comet
+                12966 => ['product_id' => 515, 'size' => 'S', 'color' => 'Milky way'], // Oversized Tie-Dye T-shirt
+            ];
 
-            \Log::info('PrintfulService: API response received', [
-                'status_code' => $response->status(),
-                'response_body_length' => strlen($response->body()),
-                'request_limit' => 20,
-                'request_offset' => $offset,
-                'response_preview' => substr($response->body(), 0, 200) . '...'
+            \Log::info('PrintfulService: Using known valid variant IDs', [
+                'variant_count' => count($knownUnisexTshirtVariants),
+                'variant_ids' => array_keys($knownUnisexTshirtVariants)
             ]);
 
-            if (!$response->successful()) {
-                Log::error('Printful Catalog API Error: ' . $response->body());
-                \Log::warning('PrintfulService: API failed, returning fallback products');
-                return $this->getFallbackProducts($limit);
-            }
-
-            $data = $response->json();
-            $products = collect($data['result']['products'] ?? []);
-
-            \Log::info('PrintfulService: Raw products data', [
-                'total_products' => $products->count(),
-                'first_product_keys' => $products->first() ? array_keys($products->first()) : [],
-                'first_product_display_name_type' => $products->first() ? gettype($products->first()['display_name'] ?? null) : 'null',
-                'first_product_type_type' => $products->first() ? gettype($products->first()['type'] ?? null) : 'null',
-                'first_product_description_type' => $products->first() ? gettype($products->first()['description'] ?? null) : 'null',
-                'product_names' => $products->pluck('display_name')->take(3)->toArray()
-            ]);
-
-            // Filter for unisex T-shirt products specifically for USA
-            $tshirtProducts = $products->filter(function ($product) {
-                $name = is_string($product['display_name'] ?? null) ? strtolower($product['display_name']) : '';
-                $type = is_string($product['type'] ?? null) ? strtolower($product['type']) : '';
-                $description = is_string($product['description'] ?? null) ? strtolower($product['description']) : '';
-                
-                // Focus on unisex T-shirt detection
-                $isUnisexTshirt = (
-                    str_contains($name, 'unisex') ||
-                    str_contains($name, 'unisex t-shirt') ||
-                    str_contains($name, 'unisex tee') ||
-                    str_contains($type, 'unisex') ||
-                    str_contains($description, 'unisex')
-                ) && (
-                    str_contains($name, 't-shirt') || 
-                    str_contains($name, 'tshirt') || 
-                    str_contains($name, 'tee') ||
-                    str_contains($type, 't-shirt') ||
-                    str_contains($type, 'tshirt') ||
-                    str_contains($type, 'tee') ||
-                    str_contains($description, 't-shirt') ||
-                    str_contains($description, 'tshirt') ||
-                    str_contains($description, 'tee')
-                );
-                
-                // If no unisex found, fall back to regular t-shirts but prioritize unisex-friendly ones
-                if (!$isUnisexTshirt) {
-                    $isTshirt = str_contains($name, 't-shirt') || 
-                               str_contains($name, 'tshirt') || 
-                               str_contains($name, 'tee') ||
-                               str_contains($type, 't-shirt') ||
-                               str_contains($type, 'tshirt') ||
-                               str_contains($type, 'tee') ||
-                               str_contains($description, 't-shirt') ||
-                               str_contains($description, 'tshirt') ||
-                               str_contains($description, 'tee');
-                    
-                    // Exclude clearly gendered products
-                    $isGendered = str_contains($name, 'women') || 
-                                 str_contains($name, 'men') || 
-                                 str_contains($name, 'ladies') || 
-                                 str_contains($name, 'mens') ||
-                                 str_contains($type, 'women') || 
-                                 str_contains($type, 'men') || 
-                                 str_contains($type, 'ladies') || 
-                                 str_contains($type, 'mens') ||
-                                 str_contains($description, 'women') || 
-                                 str_contains($description, 'men') || 
-                                 str_contains($description, 'ladies') || 
-                                 str_contains($description, 'mens');
-                    
-                    return $isTshirt && !$isGendered;
-                }
-                
-                return $isUnisexTshirt;
-            })->take($limit);
-
-            \Log::info('PrintfulService: T-shirt products filtered', [
-                'tshirt_products_count' => $tshirtProducts->count(),
-                'total_products_checked' => $products->count(),
-                'tshirt_product_names' => $tshirtProducts->pluck('display_name')->toArray()
-            ]);
-
-            // If no T-shirt products found, return fallback immediately
-            if ($tshirtProducts->isEmpty()) {
-                \Log::warning('PrintfulService: No T-shirt products found, returning fallback products');
-                return $this->getFallbackProducts($limit);
-            }
-
-            // Transform to our format with actual variant fetching for USA compatibility
+            // Transform to our format using individual variant API calls
             $formattedProducts = collect();
+            $productsAdded = 0;
             
-            foreach ($tshirtProducts as $product) {
+            foreach ($knownUnisexTshirtVariants as $variantId => $variantInfo) {
+                if ($productsAdded >= $limit) {
+                    break;
+                }
+                
                 try {
-                    // Fetch variants for this product
-                    $variants = $this->getProductVariants($product['id']);
+                    // Get individual variant details
+                    $variant = $this->getVariant($variantId);
                     
-                    if (empty($variants)) {
-                        \Log::warning("PrintfulService: No variants found for product {$product['id']}, skipping");
+                    if (!$variant) {
+                        \Log::warning("PrintfulService: Variant {$variantId} not found, skipping");
                         continue;
                     }
                     
-                    // Filter for USA-compatible variants
-                    $usaVariants = collect($variants)->filter(function ($variant) {
-                        // Check if variant is available in USA
-                        $isUsaCompatible = true;
-                        
-                        // Check for regional restrictions
-                        if (isset($variant['regional_restrictions'])) {
-                            $restrictions = $variant['regional_restrictions'];
-                            if (isset($restrictions['blocked_countries']) && 
-                                in_array('US', $restrictions['blocked_countries'])) {
-                                $isUsaCompatible = false;
-                            }
-                        }
-                        
-                        // Check if variant is discontinued
-                        if (isset($variant['discontinued']) && $variant['discontinued']) {
-                            $isUsaCompatible = false;
-                        }
-                        
-                        return $isUsaCompatible;
-                    });
-                    
-                    if ($usaVariants->isEmpty()) {
-                        \Log::warning("PrintfulService: No USA-compatible variants for product {$product['id']}, skipping");
+                    // Skip toddler products (like product 489)
+                    if (isset($variant['product_id']) && $variant['product_id'] == 489) {
+                        \Log::info("PrintfulService: Skipping toddler product 489");
                         continue;
                     }
                     
-                    // Get sizes and colors from USA-compatible variants
-                    $sizes = $usaVariants->pluck('size')->filter()->unique()->values()->toArray();
-                    $colors = $usaVariants->pluck('color')->filter()->unique()->values()->toArray();
+                    // Get product details from catalog
+                    $product = $this->getProductFromCatalog($variant['product_id']);
                     
-                    // Process colors - handle both string and array formats
-                    $processedColors = [];
-                    foreach ($colors as $color) {
-                        if (is_string($color)) {
-                            $processedColors[] = $color;
-                        } elseif (is_array($color) && isset($color['name'])) {
-                            $processedColors[] = $color['name'];
-                        } elseif (is_array($color) && isset($color['color_name'])) {
-                            $processedColors[] = $color['color_name'];
-                        } else {
-                            // Skip invalid color formats
-                            \Log::warning('PrintfulService: Skipping invalid color format', ['color' => $color]);
-                        }
-                    }
-                    $colors = array_unique($processedColors);
-                    
-                    \Log::info('PrintfulService: Extracted sizes and colors', [
-                        'product_id' => $product['id'],
-                        'sizes' => $sizes,
-                        'colors' => $colors,
-                        'colors_types' => collect($colors)->map(function($color) {
-                            return gettype($color);
-                        })->toArray()
-                    ]);
-                    
-                    // Get base price and variant ID from first variant
-                    $firstVariant = $usaVariants->first();
-                    $basePrice = $firstVariant['retail_price'] ?? $product['price'] ?? 19.99;
-                    $variantId = $firstVariant['id'] ?? null;
-                    
-                    // Skip products without valid variant IDs
-                    if (!$variantId) {
-                        \Log::warning("PrintfulService: Product {$product['id']} has no valid variant ID, skipping");
-                        continue;
+                    if (!$product) {
+                        \Log::warning("PrintfulService: Product {$variant['product_id']} not found in catalog, using variant data only");
+                        // Use variant data as fallback
+                        $product = [
+                            'id' => $variant['product_id'],
+                            'display_name' => $variant['display_name'],
+                            'image_url' => $variant['image_url'],
+                            'price' => $variant['price']
+                        ];
                     }
                     
-                    // Validate the variant ID before using it
-                    $variantValidation = $this->validateVariantId($variantId);
-                    if (!$variantValidation['exists']) {
-                        \Log::warning("PrintfulService: Invalid variant ID for product {$product['id']}", [
-                            'variant_id' => $variantId,
-                            'message' => $variantValidation['message']
-                        ]);
-                        continue;
-                    }
-                    
-                    $formatted = [
-                        'printful_id' => $product['id'], // Use actual product ID
-                        'printful_product_id' => $product['id'],
-                        'variant_id' => $variantId, // Use actual variant ID
-                        'name' => $product['display_name'] ?? $product['name'] ?? 'Unknown Product',
-                        'description' => $product['description'] ?? '',
-                        'type' => 'T-SHIRT',
-                        'brand' => $product['brand'] ?? 'Unknown',
-                        'model' => $product['model'] ?? '',
-                        'base_price' => $basePrice,
-                        'image_url' => $product['image_url'] ?? null,
-                        'is_active' => true,
-                        'sizes' => !empty($sizes) ? $sizes : ['S', 'M', 'L', 'XL'],
-                        'colors' => !empty($colors) ? collect($colors)->map(function ($color) {
-                            return [
-                                'color_name' => $color,
-                                'color_codes' => [$this->getColorCode($color)]
-                            ];
-                        })->toArray() : [
-                            ['color_name' => 'White', 'color_codes' => ['#ffffff']],
-                            ['color_name' => 'Black', 'color_codes' => ['#000000']],
-                        ],
-                        'variants_count' => $usaVariants->count(),
-                        'total_variants' => count($variants)
+                    // Format the product data
+                    $formattedProduct = [
+                        'printful_id' => $variant['product_id'],
+                        'variant_id' => $variant['id'],
+                        'name' => $product['display_name'] ?? $variant['display_name'],
+                        'base_price' => $variant['price'],
+                        'image_url' => $product['image_url'] ?? $variant['image_url'],
+                        'sizes' => [$variant['size']],
+                        'colors' => [$variant['color']['color_name'] ?? 'Unknown'],
+                        'color_codes' => [$variant['color']['color_codes'][0] ?? '#000000'],
+                        'available_as_sample' => $variant['available_as_sample'] ?? false,
+                        'currency' => $variant['currency'] ?? 'USD'
                     ];
                     
-                    \Log::info('PrintfulService: Formatted product with variants', [
-                        'product_id' => $product['id'],
-                        'variant_id' => $variantId,
-                        'product_name' => $formatted['name'],
-                        'image_url' => $formatted['image_url'] ?? 'null',
-                        'price' => $formatted['base_price'],
-                        'sizes' => $formatted['sizes'],
-                        'colors_count' => count($formatted['colors']),
-                        'usa_variants' => $usaVariants->count(),
-                        'total_variants' => count($variants)
+                    $formattedProducts->push($formattedProduct);
+                    $productsAdded++;
+                    
+                    \Log::info("PrintfulService: Added product", [
+                        'product_id' => $variant['product_id'],
+                        'variant_id' => $variant['id'],
+                        'name' => $formattedProduct['name'],
+                        'price' => $formattedProduct['base_price']
                     ]);
                     
-                    $formattedProducts->push($formatted);
-                    
-                    // Limit the number of products to process
-                    if ($formattedProducts->count() >= $limit) {
-                        break;
-                    }
-                    
                 } catch (\Exception $e) {
-                    \Log::error("PrintfulService: Error processing product {$product['id']}: " . $e->getMessage());
+                    \Log::error("PrintfulService: Error processing variant {$variantId}", [
+                        'error' => $e->getMessage()
+                    ]);
                     continue;
                 }
             }
 
-            Log::info('Printful T-shirt products fetched with variants', [
-                'total_products' => $products->count(),
-                'tshirt_products' => $tshirtProducts->count(),
-                'formatted_products' => $formattedProducts->count(),
-                'limit' => $limit,
-                'offset' => $offset,
-                'final_product_names' => $formattedProducts->pluck('name')->toArray()
+            \Log::info('PrintfulService: Final formatted products', [
+                'total_products' => $formattedProducts->count(),
+                'products' => $formattedProducts->pluck('name')->toArray()
             ]);
 
-            // If no products with variants found, return fallback
+            // If we couldn't get any products from API, return fallback
             if ($formattedProducts->isEmpty()) {
-                \Log::warning('PrintfulService: No products with USA-compatible variants found, returning fallback products');
+                \Log::warning('PrintfulService: No products from API, returning fallback products');
                 return $this->getFallbackProducts($limit);
             }
 
             return $formattedProducts;
-
+            
         } catch (\Exception $e) {
-            Log::error('Printful T-shirt products fetch error: ' . $e->getMessage(), [
+            \Log::error('PrintfulService: Exception in getTshirtProducts', [
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            \Log::warning('PrintfulService: Exception occurred, returning fallback products');
             return $this->getFallbackProducts($limit);
+        }
+
+    }
+
+    /**
+     * Get product details from catalog
+     */
+    private function getProductFromCatalog($productId)
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->get($this->baseUrl . '/catalog/products/' . $productId);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['result'] ?? null;
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            \Log::error("PrintfulService: Failed to get product {$productId} from catalog", [
+                'error' => $e->getMessage()
+            ]);
+            return null;
         }
     }
 

@@ -95,6 +95,7 @@
                                                 @forelse($products as $product)
                                                     <div class="col-md-4 mb-3 product-card" 
                                                          data-product-id="{{ is_array($product) ? (is_string($product['printful_id']) ? $product['printful_id'] : (is_numeric($product['printful_id']) ? $product['printful_id'] : '')) : $product->id }}"
+                                                         data-variant-id="{{ is_array($product) ? (is_string($product['variant_id']) ? $product['variant_id'] : (is_numeric($product['variant_id']) ? $product['variant_id'] : '')) : ($product->variant_id ?? '') }}"
                                                          data-type="{{ is_array($product) ? (is_string($product['type']) ? $product['type'] : 'T-SHIRT') : $product->type }}"
                                                          data-sizes="{{ is_array($product) ? json_encode($product['sizes']) : json_encode($product->sizes) }}"
                                                          data-colors="{{ is_array($product) ? json_encode($product['colors']) : json_encode($product->colors) }}"
@@ -410,6 +411,7 @@
             e.stopPropagation();
             
             const productId = card.dataset.productId;
+            const variantId = card.dataset.variantId;
             const productName = card.querySelector('.card-title').textContent;
             const priceValue = card.dataset.price;
             const productPrice = parseFloat(priceValue) || 0;
@@ -438,6 +440,7 @@
                 // Select
                 selectedProducts.set(productId, {
                     id: productId,
+                    variant_id: variantId, // Add variant ID for Printful
                     name: productName,
                     price: productPrice,
                     size: sizeSelect ? sizeSelect.value : 'One Size',
@@ -819,6 +822,7 @@
         selectedProducts.forEach(product => {
             items.push({
                 product_id: product.id,
+                variant_id: product.variant_id, // Use variant ID for Printful
                 size: product.size,
                 color: product.color,
                 quantity: product.quantity

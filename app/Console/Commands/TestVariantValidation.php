@@ -62,7 +62,12 @@ class TestVariantValidation extends Command
             if (isset($validation['variant_data'])) {
                 $this->line("   Retail Price: $" . ($validation['variant_data']['retail_price'] ?? 'N/A'));
                 $this->line("   Size: " . ($validation['variant_data']['size'] ?? 'N/A'));
-                $this->line("   Color: " . ($validation['variant_data']['color'] ?? 'N/A'));
+                $color = $validation['variant_data']['color'] ?? 'N/A';
+                if (is_array($color)) {
+                    $this->line("   Color: " . ($color['color_name'] ?? json_encode($color)));
+                } else {
+                    $this->line("   Color: " . $color);
+                }
             }
         } else {
             $this->error('❌ Variant is INVALID');
