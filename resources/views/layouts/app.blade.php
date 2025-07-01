@@ -128,7 +128,13 @@
             <div style="background: green; color: white; padding: 5px; text-align: center;">BEFORE NAVIGATION INCLUDE</div>
             @php
                 try {
-                    echo view('layouts.navigation')->render();
+                    $navigationHtml = view('layouts.navigation')->render();
+                    echo $navigationHtml;
+                    echo '<div style="background: orange; color: black; padding: 10px; margin: 10px; border: 2px solid black;">';
+                    echo '<strong>NAVIGATION HTML LENGTH: ' . strlen($navigationHtml) . ' characters</strong><br>';
+                    echo '<strong>NAVIGATION HTML PREVIEW:</strong><br>';
+                    echo '<pre style="background: white; padding: 10px; max-height: 200px; overflow: auto;">' . htmlspecialchars(substr($navigationHtml, 0, 1000)) . '</pre>';
+                    echo '</div>';
                 } catch (Exception $e) {
                     echo '<div style="background: red; color: white; padding: 10px; text-align: center;">NAVIGATION ERROR: ' . $e->getMessage() . '</div>';
                 }
