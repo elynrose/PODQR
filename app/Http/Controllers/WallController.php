@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\WallPost;
+use App\Services\CloudStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -46,14 +47,14 @@ class WallController extends Controller
         // Handle file attachment
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $fileName = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
             
             // Determine if it's an image or file
             $mimeType = $file->getMimeType();
             $isImage = Str::startsWith($mimeType, 'image/');
             
-            // Store file
-            $path = $file->storeAs('wall-attachments', $fileName, 'public');
+            // Store file to cloud storage
+            $cloudStorage = new CloudStorageService();
+            $path = $cloudStorage->storeFile($file, 'wall-attachments');
             
             $postData['attachment_path'] = $path;
             $postData['attachment_type'] = $isImage ? 'image' : 'file';
@@ -104,7 +105,8 @@ class WallController extends Controller
 
         // Delete attachment file if exists
         if ($post->attachment_path) {
-            Storage::disk('public')->delete($post->attachment_path);
+            $cloudStorage = new CloudStorageService();
+            $cloudStorage->deleteFile($post->attachment_path);
         }
 
         $post->delete();
@@ -170,7 +172,8 @@ class WallController extends Controller
     {
         // Delete attachment file if exists
         if ($post->attachment_path) {
-            Storage::disk('public')->delete($post->attachment_path);
+            $cloudStorage = new CloudStorageService();
+            $cloudStorage->deleteFile($post->attachment_path);
         }
 
         $post->delete();

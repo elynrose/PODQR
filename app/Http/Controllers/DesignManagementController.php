@@ -6,6 +6,7 @@ use App\Models\Design;
 use App\Models\ClothesType;
 use App\Models\ShirtSize;
 use App\Models\QrCode;
+use App\Services\CloudStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -204,35 +205,13 @@ class DesignManagementController extends Controller
         \Log::info('Base64 data starts with: ' . substr($base64Data, 0, 50));
         
         try {
-            // Remove data URL prefix if present
-            $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $base64Data);
-            \Log::info('After removing prefix, length: ' . strlen($base64Data));
-            
-            // Decode base64 data
-            $imageData = base64_decode($base64Data);
-            
-            if ($imageData === false) {
-                \Log::error('Failed to decode base64 data');
-                throw new \Exception('Invalid base64 image data');
-            }
-            
-            \Log::info('Decoded image data length: ' . strlen($imageData));
-            
-            // Generate filename
+            $cloudStorage = new CloudStorageService();
             $filename = 'design-covers/' . $designId . '_' . time() . '_' . uniqid() . '.png';
-            \Log::info('Generated filename: ' . $filename);
             
-            // Save to storage
-            $result = \Storage::disk('public')->put($filename, $imageData);
-            \Log::info('Storage put result: ' . ($result ? 'true' : 'false'));
+            $path = $cloudStorage->storeBase64Image($base64Data, 'design-covers', $filename);
             
-            if ($result) {
-                \Log::info('Cover image saved successfully: ' . $filename);
-                return $filename;
-            } else {
-                \Log::error('Failed to save cover image to storage');
-                throw new \Exception('Failed to save cover image to storage');
-            }
+            \Log::info('Cover image saved to cloud storage: ' . $path);
+            return $path;
             
         } catch (\Exception $e) {
             \Log::error('Error in saveCoverImage: ' . $e->getMessage());
@@ -411,20 +390,33 @@ class DesignManagementController extends Controller
             ], 403);
         }
 
-        // Delete preview images
-        if ($design->front_image_path) {
-            Storage::disk('public')->delete($design->front_image_path);
-        }
-        if ($design->back_image_path) {
-            Storage::disk('public')->delete($design->back_image_path);
-        }
+        try {
+            $cloudStorage = new CloudStorageService();
+            
+            // Delete preview images from cloud storage
+            if ($design->front_image_path) {
+                $cloudStorage->deleteFile($design->front_image_path);
+            }
+            if ($design->back_image_path) {
+                $cloudStorage->deleteFile($design->back_image_path);
+            }
+            if ($design->cover_image) {
+                $cloudStorage->deleteFile($design->cover_image);
+            }
 
-        $design->delete();
+            $design->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Design deleted successfully!'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Design deleted successfully!'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error deleting design: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting design. Please try again.'
+            ], 500);
+        }
     }
 
     /**
@@ -433,13 +425,12 @@ class DesignManagementController extends Controller
     private function generatePreviewImages(Design $design)
     {
         try {
+            $cloudStorage = new CloudStorageService();
             \Log::info('Generating preview images for design: ' . $design->id);
             
             // Create design directory if it doesn't exist
             $designDir = 'designs/' . $design->id . '/photos';
-            if (!Storage::disk('public')->exists($designDir)) {
-                Storage::disk('public')->makeDirectory($designDir);
-            }
+            $cloudStorage->makeDirectory($designDir);
             
             $timestamp = time();
             $updated = false;
@@ -550,6 +541,8 @@ class DesignManagementController extends Controller
     private function createPlaceholderImage($filepath, $canvasData)
     {
         try {
+            $cloudStorage = new CloudStorageService();
+            
             // Create a simple placeholder image
             $width = $canvasData['width'] ?? 260;
             $height = $canvasData['height'] ?? 350;
@@ -579,10 +572,14 @@ class DesignManagementController extends Controller
             $imageData = ob_get_clean();
             imagedestroy($image);
             
-            // Save to storage
-            Storage::disk('public')->put($filepath, $imageData);
+            // Convert to base64 and save to cloud storage
+            $base64Data = base64_encode($imageData);
+            $directory = dirname($filepath);
+            $filename = basename($filepath);
             
-            \Log::info('Placeholder image created: ' . $filepath);
+            $cloudStorage->storeBase64Image($base64Data, $directory, $filename);
+            
+            \Log::info('Placeholder image created in cloud storage: ' . $filepath);
             
         } catch (\Exception $e) {
             \Log::error('Error creating placeholder image: ' . $e->getMessage());
@@ -635,6 +632,8 @@ class DesignManagementController extends Controller
     private function saveDesignImage($base64Data, $designId, $side)
     {
         try {
+            $cloudStorage = new CloudStorageService();
+            
             // Check if this is canvas data format (when toDataURL fails)
             if (strpos($base64Data, 'canvas_data:') === 0) {
                 // Extract canvas JSON data
@@ -650,7 +649,7 @@ class DesignManagementController extends Controller
                     // Create placeholder image from canvas data
                     $this->createPlaceholderImage($filepath, $canvasData);
                     
-                    \Log::info('Canvas data image saved: ' . $filepath);
+                    \Log::info('Canvas data image saved to cloud storage: ' . $filepath);
                     return $filepath;
                 } else {
                     \Log::warning('Invalid canvas data format for design ' . $designId . ' ' . $side);
@@ -658,29 +657,21 @@ class DesignManagementController extends Controller
                 }
             }
             
-            // Remove data URL prefix if present
-            if (strpos($base64Data, 'data:image/png;base64,') === 0) {
-                $base64Data = substr($base64Data, 22);
-            }
-            
             // Create design directory if it doesn't exist
             $designDir = 'designs/' . $designId . '/photos';
-            if (!Storage::disk('public')->exists($designDir)) {
-                Storage::disk('public')->makeDirectory($designDir);
-            }
+            $cloudStorage->makeDirectory($designDir);
             
             // Generate filename
             $timestamp = time();
             $filename = $side . '_' . $designId . '_' . $timestamp . '.png';
             $filepath = $designDir . '/' . $filename;
             
-            // Decode and save the image
-            $imageData = base64_decode($base64Data);
-            Storage::disk('public')->put($filepath, $imageData);
+            // Save the image to cloud storage
+            $path = $cloudStorage->storeBase64Image($base64Data, $designDir, $filename);
             
-            \Log::info('Design image saved: ' . $filepath);
+            \Log::info('Design image saved to cloud storage: ' . $path);
             
-            return $filepath;
+            return $path;
             
         } catch (\Exception $e) {
             \Log::error('Error saving design image: ' . $e->getMessage());

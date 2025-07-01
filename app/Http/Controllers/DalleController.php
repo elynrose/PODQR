@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\CloudStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -208,24 +209,17 @@ class DalleController extends Controller
     private function saveImageFromUrl($imageUrl, $prompt)
     {
         try {
-            $response = Http::timeout(30)->get($imageUrl);
+            $cloudStorage = new CloudStorageService();
+            $fileName = 'dalle_' . time() . '_' . Str::random(10) . '.png';
             
-            if ($response->successful()) {
-                $imageData = $response->body();
-                $fileName = 'dalle_' . time() . '_' . Str::random(10) . '.png';
-                $path = 'dalle-images/' . $fileName;
-                
-                Storage::disk('public')->put($path, $imageData);
-                
-                Log::info('DALL-E image saved', [
-                    'path' => $path,
-                    'prompt' => $prompt
-                ]);
-                
-                return $path;
-            } else {
-                throw new \Exception('Failed to download image from URL');
-            }
+            $path = $cloudStorage->storeImageFromUrl($imageUrl, 'dalle-images', $fileName);
+            
+            Log::info('DALL-E image saved to cloud storage', [
+                'path' => $path,
+                'prompt' => $prompt
+            ]);
+            
+            return $path;
         } catch (\Exception $e) {
             Log::error('Error saving DALL-E image', [
                 'error' => $e->getMessage(),

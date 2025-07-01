@@ -33,7 +33,7 @@ class ClothesType extends Model
     public function getFrontImageUrlAttribute()
     {
         if ($this->front_image) {
-            return asset('storage/' . $this->front_image);
+            return Storage::url($this->front_image);
         }
         
         // Return default placeholder based on category
@@ -55,7 +55,7 @@ class ClothesType extends Model
     public function getBackImageUrlAttribute()
     {
         if ($this->back_image) {
-            return asset('storage/' . $this->back_image);
+            return Storage::url($this->back_image);
         }
         
         // Return default back image

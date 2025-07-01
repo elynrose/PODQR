@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\QrCode as QrCodeModel;
+use App\Services\CloudStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -66,11 +67,13 @@ class QrCodeController extends Controller
                 ->backgroundColor($request->background_color)
                 ->generate($request->content);
 
-            // Save the QR code image
+            // Save the QR code image to cloud storage
+            $cloudStorage = new CloudStorageService();
             $filename = $user->id . '_' . time() . '_' . Str::random(12) . '.svg';
             $path = 'qr-codes/' . $filename;
             
-            Storage::disk('public')->put($path, $qrCodeImage);
+            $base64Data = base64_encode($qrCodeImage);
+            $cloudStorage->storeBase64Image($base64Data, 'qr-codes', $filename);
             
             // Update the QR code with the file path
             $qrCode->update(['file_path' => $path]);
@@ -199,9 +202,10 @@ class QrCodeController extends Controller
             ], 403);
         }
 
-        // Delete file from storage
+        // Delete file from cloud storage
         if ($qrCode->file_path) {
-            Storage::disk('public')->delete($qrCode->file_path);
+            $cloudStorage = new CloudStorageService();
+            $cloudStorage->deleteFile($qrCode->file_path);
         }
 
         $qrCode->delete();

@@ -83,10 +83,7 @@ class Design extends Model
      */
     public function getBackImageUrlAttribute(): ?string
     {
-        if ($this->back_image_path) {
-            return asset('storage/' . $this->back_image_path);
-        }
-        return null;
+        return $this->back_image_path ? Storage::url($this->back_image_path) : null;
     }
 
     /**

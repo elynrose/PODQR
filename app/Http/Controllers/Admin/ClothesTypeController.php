@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ClothesCategory;
 use App\Models\ClothesType;
+use App\Services\CloudStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -66,13 +67,15 @@ class ClothesTypeController extends Controller
 
         // Handle front image upload
         if ($request->hasFile('front_image')) {
-            $frontImagePath = $request->file('front_image')->store('clothes-types', 'public');
+            $cloudStorage = new CloudStorageService();
+            $frontImagePath = $cloudStorage->storeFile($request->file('front_image'), 'clothes-types');
             $data['front_image'] = $frontImagePath;
         }
 
         // Handle back image upload
         if ($request->hasFile('back_image')) {
-            $backImagePath = $request->file('back_image')->store('clothes-types', 'public');
+            $cloudStorage = new CloudStorageService();
+            $backImagePath = $cloudStorage->storeFile($request->file('back_image'), 'clothes-types');
             $data['back_image'] = $backImagePath;
         }
 
@@ -139,9 +142,11 @@ class ClothesTypeController extends Controller
         if ($request->hasFile('front_image')) {
             // Delete old image if exists
             if ($clothesType->front_image) {
-                Storage::disk('public')->delete($clothesType->front_image);
+                $cloudStorage = new CloudStorageService();
+                $cloudStorage->deleteFile($clothesType->front_image);
             }
-            $frontImagePath = $request->file('front_image')->store('clothes-types', 'public');
+            $cloudStorage = new CloudStorageService();
+            $frontImagePath = $cloudStorage->storeFile($request->file('front_image'), 'clothes-types');
             $data['front_image'] = $frontImagePath;
         }
 
@@ -149,9 +154,11 @@ class ClothesTypeController extends Controller
         if ($request->hasFile('back_image')) {
             // Delete old image if exists
             if ($clothesType->back_image) {
-                Storage::disk('public')->delete($clothesType->back_image);
+                $cloudStorage = new CloudStorageService();
+                $cloudStorage->deleteFile($clothesType->back_image);
             }
-            $backImagePath = $request->file('back_image')->store('clothes-types', 'public');
+            $cloudStorage = new CloudStorageService();
+            $backImagePath = $cloudStorage->storeFile($request->file('back_image'), 'clothes-types');
             $data['back_image'] = $backImagePath;
         }
 
@@ -168,10 +175,12 @@ class ClothesTypeController extends Controller
     {
         // Delete images from storage
         if ($clothesType->front_image) {
-            Storage::disk('public')->delete($clothesType->front_image);
+            $cloudStorage = new CloudStorageService();
+            $cloudStorage->deleteFile($clothesType->front_image);
         }
         if ($clothesType->back_image) {
-            Storage::disk('public')->delete($clothesType->back_image);
+            $cloudStorage = new CloudStorageService();
+            $cloudStorage->deleteFile($clothesType->back_image);
         }
 
         $clothesType->delete();
