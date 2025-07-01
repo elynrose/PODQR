@@ -408,7 +408,7 @@ class OrderController extends Controller
         $request->validate([
             'design_id' => 'required|exists:designs,id',
             'items' => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|string',
             'items.*.size' => 'required|string',
             'items.*.color' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
@@ -431,6 +431,12 @@ class OrderController extends Controller
             $orderItems = [];
 
             foreach ($request->items as $item) {
+                // Validate product_id is not empty
+                if (empty($item['product_id'])) {
+                    \Log::error('Empty product_id provided', ['item' => $item]);
+                    return response()->json(['error' => 'Invalid product ID'], 400);
+                }
+                
                 // Get product from Printful API data instead of database
                 $printfulProducts = $this->printfulService->getTshirtProducts(50);
                 $product = $printfulProducts->firstWhere('printful_id', $item['product_id']);

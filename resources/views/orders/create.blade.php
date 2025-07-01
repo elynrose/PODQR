@@ -105,7 +105,7 @@
                                             <div class="row" id="productGrid">
                                                 @forelse($products as $product)
                                                     <div class="col-md-4 mb-3 product-card" 
-                                                         data-product-id="{{ is_array($product) ? (is_string($product['printful_id']) ? $product['printful_id'] : 'unknown') : $product->id }}"
+                                                         data-product-id="{{ is_array($product) ? (is_string($product['printful_id']) ? $product['printful_id'] : (is_numeric($product['printful_id']) ? $product['printful_id'] : '')) : $product->id }}"
                                                          data-type="{{ is_array($product) ? (is_string($product['type']) ? $product['type'] : 'T-SHIRT') : $product->type }}"
                                                          data-sizes="{{ is_array($product) ? json_encode($product['sizes']) : json_encode($product->sizes) }}"
                                                          data-colors="{{ is_array($product) ? json_encode($product['colors']) : json_encode($product->colors) }}"
