@@ -706,11 +706,19 @@ class PrintfulService
                         })->toArray()
                     ]);
                     
-                    // Get base price from first variant
-                    $basePrice = $usaVariants->first()['retail_price'] ?? $product['price'] ?? 19.99;
+                    // Get base price and variant ID from first variant
+                    $firstVariant = $usaVariants->first();
+                    $basePrice = $firstVariant['retail_price'] ?? $product['price'] ?? 19.99;
+                    $variantId = $firstVariant['id'] ?? null;
+                    
+                    // Skip products without valid variant IDs
+                    if (!$variantId) {
+                        \Log::warning("PrintfulService: Product {$product['id']} has no valid variant ID, skipping");
+                        continue;
+                    }
                     
                     $formatted = [
-                        'printful_id' => $product['id'],
+                        'printful_id' => $variantId, // Use actual variant ID, not product ID
                         'printful_product_id' => $product['id'],
                         'name' => $product['display_name'] ?? $product['name'] ?? 'Unknown Product',
                         'description' => $product['description'] ?? '',
@@ -731,11 +739,13 @@ class PrintfulService
                             ['color_name' => 'Black', 'color_codes' => ['#000000']],
                         ],
                         'variants_count' => $usaVariants->count(),
-                        'total_variants' => count($variants)
+                        'total_variants' => count($variants),
+                        'variant_id' => $variantId // Add explicit variant ID for reference
                     ];
                     
                     \Log::info('PrintfulService: Formatted product with variants', [
                         'product_id' => $product['id'],
+                        'variant_id' => $variantId,
                         'product_name' => $formatted['name'],
                         'image_url' => $formatted['image_url'] ?? 'null',
                         'price' => $formatted['base_price'],
@@ -883,8 +893,9 @@ class PrintfulService
         
         return collect([
             [
-                'printful_id' => 'fallback-1',
+                'printful_id' => '4012', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'fallback-1',
+                'variant_id' => '4012',
                 'name' => 'Unisex Classic T-Shirt',
                 'description' => 'Premium cotton unisex T-shirt with custom design - perfect for USA market',
                 'type' => 'T-SHIRT',
@@ -902,8 +913,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => 'fallback-2',
+                'printful_id' => '4013', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'fallback-2',
+                'variant_id' => '4013',
                 'name' => 'Unisex Premium T-Shirt',
                 'description' => 'High-quality cotton unisex T-shirt - USA compatible',
                 'type' => 'T-SHIRT',
@@ -921,8 +933,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => 'fallback-3',
+                'printful_id' => '4014', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'fallback-3',
+                'variant_id' => '4014',
                 'name' => 'Unisex Comfort T-Shirt',
                 'description' => 'Comfortable unisex T-shirt - perfect for all genders',
                 'type' => 'T-SHIRT',
@@ -983,8 +996,9 @@ class PrintfulService
         
         return collect([
             [
-                'printful_id' => 'basic-1',
+                'printful_id' => '4012', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'basic-1',
+                'variant_id' => '4012',
                 'name' => 'Unisex Premium Cotton T-Shirt',
                 'description' => 'High-quality cotton unisex T-shirt perfect for custom designs - USA market',
                 'type' => 'T-SHIRT',
@@ -1002,8 +1016,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => 'basic-2',
+                'printful_id' => '4013', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'basic-2',
+                'variant_id' => '4013',
                 'name' => 'Unisex Classic Fit T-Shirt',
                 'description' => 'Comfortable unisex classic fit T-shirt - perfect for all',
                 'type' => 'T-SHIRT',
@@ -1021,8 +1036,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => 'basic-3',
+                'printful_id' => '4014', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'basic-3',
+                'variant_id' => '4014',
                 'name' => 'Unisex Comfort T-Shirt',
                 'description' => 'Comfortable unisex T-shirt - great for everyone',
                 'type' => 'T-SHIRT',
@@ -1039,8 +1055,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => 'basic-4',
+                'printful_id' => '4015', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'basic-4',
+                'variant_id' => '4015',
                 'name' => 'Unisex Heavy Cotton T-Shirt',
                 'description' => 'Durable unisex heavy cotton T-shirt - USA compatible',
                 'type' => 'T-SHIRT',
@@ -1057,8 +1074,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => 'basic-5',
+                'printful_id' => '4016', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'basic-5',
+                'variant_id' => '4016',
                 'name' => 'Unisex V-Neck T-Shirt',
                 'description' => 'Stylish unisex V-neck T-shirt - perfect fit for all',
                 'type' => 'T-SHIRT',
