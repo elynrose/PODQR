@@ -18,7 +18,7 @@
     <div class="container" style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 0 15px !important;">
         <!-- Logo -->
         <a class="navbar-brand" href="{{ route('dashboard') }}" style="display: block !important; padding: 0.3125rem 0 !important; margin-right: 1rem !important; font-size: 1.25rem !important; color: #212529 !important; text-decoration: none !important;">
-            <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+            PODQR LOGO
         </a>
         
         <!-- Hamburger -->
