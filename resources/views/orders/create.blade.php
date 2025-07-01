@@ -74,21 +74,10 @@
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label">Shipping Location</label>
-                                                    <select id="locationFilter" class="form-select">
-                                                        <option value="US" {{ $userLocation == 'US' ? 'selected' : '' }}>United States</option>
-                                                        <option value="CA" {{ $userLocation == 'CA' ? 'selected' : '' }}>Canada</option>
-                                                        <option value="GB" {{ $userLocation == 'GB' ? 'selected' : '' }}>United Kingdom</option>
-                                                        <option value="AU" {{ $userLocation == 'AU' ? 'selected' : '' }}>Australia</option>
+                                                    <select id="locationFilter" class="form-select" disabled>
+                                                        <option value="US" selected>United States</option>
                                                     </select>
-                                                    <small class="text-muted">Products will be filtered based on your location</small>
-                                                    @if(auth()->check() && auth()->user() && !auth()->user()->country_code)
-                                                        <div class="alert alert-info mt-2">
-                                                            <small>
-                                                                <i class="fas fa-info-circle"></i>
-                                                                <a href="{{ route('profile.edit') }}">Set your location in your profile</a> to get personalized product recommendations.
-                                                            </small>
-                                                        </div>
-                                                    @endif
+                                                    <small class="text-muted">Currently shipping to USA only - unisex t-shirts</small>
                                                 </div>
                                             </div>
                                             

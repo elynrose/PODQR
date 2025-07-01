@@ -96,8 +96,8 @@ class OrderController extends Controller
         try {
             $design = Design::findOrFail($designId);
             
-            // Get user's preferred location from profile, fallback to request parameter
-            $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
+            // Focus on USA location for unisex t-shirts
+            $userLocation = 'US';
             
             // Debug: Log before API call
             \Log::info('OrderController: About to fetch T-shirt products from Printful API');
@@ -219,8 +219,8 @@ class OrderController extends Controller
         $designId = $request->input('design_id');
         $design = $designId ? Design::find($designId) : null;
         
-        // Get user's preferred location from profile, fallback to request parameter
-        $userLocation = auth()->check() ? (auth()->user()->country_code ?? $request->get('location', 'US')) : $request->get('location', 'US');
+        // Focus on USA location for unisex t-shirts
+        $userLocation = 'US';
         
         try {
             // Get products directly from Printful API

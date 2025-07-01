@@ -568,24 +568,61 @@ class PrintfulService
                 'product_names' => $products->pluck('display_name')->take(3)->toArray()
             ]);
 
-            // Filter for T-shirt products with more inclusive criteria
+            // Filter for unisex T-shirt products specifically for USA
             $tshirtProducts = $products->filter(function ($product) {
                 $name = is_string($product['display_name'] ?? null) ? strtolower($product['display_name']) : '';
                 $type = is_string($product['type'] ?? null) ? strtolower($product['type']) : '';
                 $description = is_string($product['description'] ?? null) ? strtolower($product['description']) : '';
                 
-                // More inclusive T-shirt detection
-                $isTshirt = str_contains($name, 't-shirt') || 
-                           str_contains($name, 'tshirt') || 
-                           str_contains($name, 'tee') ||
-                           str_contains($type, 't-shirt') ||
-                           str_contains($type, 'tshirt') ||
-                           str_contains($type, 'tee') ||
-                           str_contains($description, 't-shirt') ||
-                           str_contains($description, 'tshirt') ||
-                           str_contains($description, 'tee');
+                // Focus on unisex T-shirt detection
+                $isUnisexTshirt = (
+                    str_contains($name, 'unisex') ||
+                    str_contains($name, 'unisex t-shirt') ||
+                    str_contains($name, 'unisex tee') ||
+                    str_contains($type, 'unisex') ||
+                    str_contains($description, 'unisex')
+                ) && (
+                    str_contains($name, 't-shirt') || 
+                    str_contains($name, 'tshirt') || 
+                    str_contains($name, 'tee') ||
+                    str_contains($type, 't-shirt') ||
+                    str_contains($type, 'tshirt') ||
+                    str_contains($type, 'tee') ||
+                    str_contains($description, 't-shirt') ||
+                    str_contains($description, 'tshirt') ||
+                    str_contains($description, 'tee')
+                );
                 
-                return $isTshirt;
+                // If no unisex found, fall back to regular t-shirts but prioritize unisex-friendly ones
+                if (!$isUnisexTshirt) {
+                    $isTshirt = str_contains($name, 't-shirt') || 
+                               str_contains($name, 'tshirt') || 
+                               str_contains($name, 'tee') ||
+                               str_contains($type, 't-shirt') ||
+                               str_contains($type, 'tshirt') ||
+                               str_contains($type, 'tee') ||
+                               str_contains($description, 't-shirt') ||
+                               str_contains($description, 'tshirt') ||
+                               str_contains($description, 'tee');
+                    
+                    // Exclude clearly gendered products
+                    $isGendered = str_contains($name, 'women') || 
+                                 str_contains($name, 'men') || 
+                                 str_contains($name, 'ladies') || 
+                                 str_contains($name, 'mens') ||
+                                 str_contains($type, 'women') || 
+                                 str_contains($type, 'men') || 
+                                 str_contains($type, 'ladies') || 
+                                 str_contains($type, 'mens') ||
+                                 str_contains($description, 'women') || 
+                                 str_contains($description, 'men') || 
+                                 str_contains($description, 'ladies') || 
+                                 str_contains($description, 'mens');
+                    
+                    return $isTshirt && !$isGendered;
+                }
+                
+                return $isUnisexTshirt;
             })->take($limit);
 
             \Log::info('PrintfulService: T-shirt products filtered', [
@@ -826,17 +863,17 @@ class PrintfulService
      */
     private function getFallbackProducts($limit = 20)
     {
-        \Log::info('PrintfulService: Using fallback products', ['limit' => $limit]);
+        \Log::info('PrintfulService: Using fallback unisex t-shirt products for USA', ['limit' => $limit]);
         
         return collect([
             [
                 'printful_id' => 'fallback-1',
                 'printful_product_id' => 'fallback-1',
-                'name' => 'Classic T-Shirt',
-                'description' => 'Premium cotton T-shirt with custom design',
+                'name' => 'Unisex Classic T-Shirt',
+                'description' => 'Premium cotton unisex T-shirt with custom design - perfect for USA market',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Classic',
+                'model' => 'Unisex Classic',
                 'base_price' => 19.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -851,11 +888,11 @@ class PrintfulService
             [
                 'printful_id' => 'fallback-2',
                 'printful_product_id' => 'fallback-2',
-                'name' => 'Premium T-Shirt',
-                'description' => 'High-quality cotton T-shirt',
+                'name' => 'Unisex Premium T-Shirt',
+                'description' => 'High-quality cotton unisex T-shirt - USA compatible',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Premium',
+                'model' => 'Unisex Premium',
                 'base_price' => 24.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -870,11 +907,11 @@ class PrintfulService
             [
                 'printful_id' => 'fallback-3',
                 'printful_product_id' => 'fallback-3',
-                'name' => 'Slim Fit T-Shirt',
-                'description' => 'Modern slim fit T-shirt',
+                'name' => 'Unisex Comfort T-Shirt',
+                'description' => 'Comfortable unisex T-shirt - perfect for all genders',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Slim Fit',
+                'model' => 'Unisex Comfort',
                 'base_price' => 22.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -926,17 +963,17 @@ class PrintfulService
      */
     public function getBasicTshirtProducts($limit = 10)
     {
-        \Log::info('PrintfulService: Using basic T-shirt products (no API calls)');
+        \Log::info('PrintfulService: Using basic unisex T-shirt products for USA (no API calls)');
         
         return collect([
             [
                 'printful_id' => 'basic-1',
                 'printful_product_id' => 'basic-1',
-                'name' => 'Premium Cotton T-Shirt',
-                'description' => 'High-quality cotton T-shirt perfect for custom designs',
+                'name' => 'Unisex Premium Cotton T-Shirt',
+                'description' => 'High-quality cotton unisex T-shirt perfect for custom designs - USA market',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Premium Cotton',
+                'model' => 'Unisex Premium Cotton',
                 'base_price' => 19.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -951,11 +988,11 @@ class PrintfulService
             [
                 'printful_id' => 'basic-2',
                 'printful_product_id' => 'basic-2',
-                'name' => 'Classic Fit T-Shirt',
-                'description' => 'Comfortable classic fit T-shirt',
+                'name' => 'Unisex Classic Fit T-Shirt',
+                'description' => 'Comfortable unisex classic fit T-shirt - perfect for all',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Classic Fit',
+                'model' => 'Unisex Classic Fit',
                 'base_price' => 17.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -970,11 +1007,11 @@ class PrintfulService
             [
                 'printful_id' => 'basic-3',
                 'printful_product_id' => 'basic-3',
-                'name' => 'Slim Fit T-Shirt',
-                'description' => 'Modern slim fit T-shirt',
+                'name' => 'Unisex Comfort T-Shirt',
+                'description' => 'Comfortable unisex T-shirt - great for everyone',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Slim Fit',
+                'model' => 'Unisex Comfort',
                 'base_price' => 21.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -988,11 +1025,11 @@ class PrintfulService
             [
                 'printful_id' => 'basic-4',
                 'printful_product_id' => 'basic-4',
-                'name' => 'Heavy Cotton T-Shirt',
-                'description' => 'Durable heavy cotton T-shirt',
+                'name' => 'Unisex Heavy Cotton T-Shirt',
+                'description' => 'Durable unisex heavy cotton T-shirt - USA compatible',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'Heavy Cotton',
+                'model' => 'Unisex Heavy Cotton',
                 'base_price' => 23.99,
                 'image_url' => null,
                 'is_active' => true,
@@ -1006,11 +1043,11 @@ class PrintfulService
             [
                 'printful_id' => 'basic-5',
                 'printful_product_id' => 'basic-5',
-                'name' => 'V-Neck T-Shirt',
-                'description' => 'Stylish V-neck T-shirt',
+                'name' => 'Unisex V-Neck T-Shirt',
+                'description' => 'Stylish unisex V-neck T-shirt - perfect fit for all',
                 'type' => 'T-SHIRT',
                 'brand' => 'Printful',
-                'model' => 'V-Neck',
+                'model' => 'Unisex V-Neck',
                 'base_price' => 20.99,
                 'image_url' => null,
                 'is_active' => true,
