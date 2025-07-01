@@ -818,8 +818,9 @@ class PrintfulService
                     }
                     
                     $formatted = [
-                        'printful_id' => $variantId, // Use actual variant ID, not product ID
+                        'printful_id' => $product['id'], // Use actual product ID
                         'printful_product_id' => $product['id'],
+                        'variant_id' => $variantId, // Use actual variant ID
                         'name' => $product['display_name'] ?? $product['name'] ?? 'Unknown Product',
                         'description' => $product['description'] ?? '',
                         'type' => 'T-SHIRT',
@@ -839,8 +840,7 @@ class PrintfulService
                             ['color_name' => 'Black', 'color_codes' => ['#000000']],
                         ],
                         'variants_count' => $usaVariants->count(),
-                        'total_variants' => count($variants),
-                        'variant_id' => $variantId // Add explicit variant ID for reference
+                        'total_variants' => count($variants)
                     ];
                     
                     \Log::info('PrintfulService: Formatted product with variants', [
@@ -993,38 +993,37 @@ class PrintfulService
         
         return collect([
             [
-                'printful_id' => '12585', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'fallback-1',
-                'variant_id' => '12585',
-                'name' => 'Unisex Classic T-Shirt',
-                'description' => 'Premium cotton unisex T-shirt with custom design - perfect for USA market',
+                'printful_id' => '493', // Valid Printful product ID
+                'printful_product_id' => '493',
+                'variant_id' => '12585', // Valid variant ID for this product
+                'name' => 'Unisex Eco Sweatshirt | Stanley/Stella STSU178',
+                'description' => 'Premium organic cotton unisex sweatshirt - perfect for USA market',
                 'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Classic',
-                'base_price' => 19.99,
+                'brand' => 'Stanley/Stella',
+                'model' => 'STSU178',
+                'base_price' => 34.75,
                 'image_url' => null,
                 'is_active' => true,
-                'sizes' => ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+                'sizes' => ['S', 'M', 'L', 'XL', '2XL'],
                 'colors' => [
                     ['color_name' => 'White', 'color_codes' => ['#ffffff']],
                     ['color_name' => 'Black', 'color_codes' => ['#000000']],
                     ['color_name' => 'Navy', 'color_codes' => ['#000080']],
-                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
                 ],
             ],
             [
-                'printful_id' => '12586', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'fallback-2',
-                'variant_id' => '12586',
-                'name' => 'Unisex Premium T-Shirt',
-                'description' => 'High-quality cotton unisex T-shirt - USA compatible',
+                'printful_id' => '506', // Valid Printful product ID
+                'printful_product_id' => '506',
+                'variant_id' => '12694', // Valid variant ID for this product
+                'name' => 'Unisex Organic Sweatshirt | SOL\'S 03574',
+                'description' => 'High-quality organic cotton unisex sweatshirt - USA compatible',
                 'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Premium',
-                'base_price' => 24.99,
+                'brand' => 'SOL\'S',
+                'model' => '03574',
+                'base_price' => 24.75,
                 'image_url' => null,
                 'is_active' => true,
-                'sizes' => ['S', 'M', 'L', 'XL'],
+                'sizes' => ['S', 'M', 'L', 'XL', 'XXL'],
                 'colors' => [
                     ['color_name' => 'White', 'color_codes' => ['#ffffff']],
                     ['color_name' => 'Black', 'color_codes' => ['#000000']],
@@ -1033,18 +1032,18 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => '12587', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'fallback-3',
-                'variant_id' => '12587',
-                'name' => 'Unisex Comfort T-Shirt',
-                'description' => 'Comfortable unisex T-shirt - perfect for all genders',
+                'printful_id' => '515', // Valid Printful product ID
+                'printful_product_id' => '515',
+                'variant_id' => '12966', // Valid variant ID for this product
+                'name' => 'Oversized Tie-Dye T-Shirt | Shaka Wear SHHTDS',
+                'description' => 'Comfortable oversized tie-dye unisex T-shirt - perfect for all',
                 'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Comfort',
-                'base_price' => 22.99,
+                'brand' => 'Shaka Wear',
+                'model' => 'SHHTDS',
+                'base_price' => 19.33,
                 'image_url' => null,
                 'is_active' => true,
-                'sizes' => ['S', 'M', 'L', 'XL'],
+                'sizes' => ['S', 'M', 'L', 'XL', '2XL'],
                 'colors' => [
                     ['color_name' => 'White', 'color_codes' => ['#ffffff']],
                     ['color_name' => 'Black', 'color_codes' => ['#000000']],
@@ -1096,38 +1095,37 @@ class PrintfulService
         
         return collect([
             [
-                'printful_id' => '4012', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'basic-1',
-                'variant_id' => '4012',
-                'name' => 'Unisex Premium Cotton T-Shirt',
-                'description' => 'High-quality cotton unisex T-shirt perfect for custom designs - USA market',
+                'printful_id' => '493', // Valid Printful product ID
+                'printful_product_id' => '493',
+                'variant_id' => '12585', // Valid variant ID for this product
+                'name' => 'Unisex Eco Sweatshirt | Stanley/Stella STSU178',
+                'description' => 'Premium organic cotton unisex sweatshirt - perfect for USA market',
                 'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Premium Cotton',
-                'base_price' => 19.99,
+                'brand' => 'Stanley/Stella',
+                'model' => 'STSU178',
+                'base_price' => 34.75,
                 'image_url' => null,
                 'is_active' => true,
-                'sizes' => ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+                'sizes' => ['S', 'M', 'L', 'XL', '2XL'],
                 'colors' => [
                     ['color_name' => 'White', 'color_codes' => ['#ffffff']],
                     ['color_name' => 'Black', 'color_codes' => ['#000000']],
                     ['color_name' => 'Navy', 'color_codes' => ['#000080']],
-                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
                 ],
             ],
             [
-                'printful_id' => '4013', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'basic-2',
-                'variant_id' => '4013',
-                'name' => 'Unisex Classic Fit T-Shirt',
-                'description' => 'Comfortable unisex classic fit T-shirt - perfect for all',
+                'printful_id' => '506', // Valid Printful product ID
+                'printful_product_id' => '506',
+                'variant_id' => '12694', // Valid variant ID for this product
+                'name' => 'Unisex Organic Sweatshirt | SOL\'S 03574',
+                'description' => 'High-quality organic cotton unisex sweatshirt - USA compatible',
                 'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Classic Fit',
-                'base_price' => 17.99,
+                'brand' => 'SOL\'S',
+                'model' => '03574',
+                'base_price' => 24.75,
                 'image_url' => null,
                 'is_active' => true,
-                'sizes' => ['S', 'M', 'L', 'XL'],
+                'sizes' => ['S', 'M', 'L', 'XL', 'XXL'],
                 'colors' => [
                     ['color_name' => 'White', 'color_codes' => ['#ffffff']],
                     ['color_name' => 'Black', 'color_codes' => ['#000000']],
@@ -1136,56 +1134,18 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => '4014', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'basic-3',
-                'variant_id' => '4014',
-                'name' => 'Unisex Comfort T-Shirt',
-                'description' => 'Comfortable unisex T-shirt - great for everyone',
+                'printful_id' => '515', // Valid Printful product ID
+                'printful_product_id' => '515',
+                'variant_id' => '12966', // Valid variant ID for this product
+                'name' => 'Oversized Tie-Dye T-Shirt | Shaka Wear SHHTDS',
+                'description' => 'Comfortable oversized tie-dye unisex T-shirt - perfect for all',
                 'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Comfort',
-                'base_price' => 21.99,
+                'brand' => 'Shaka Wear',
+                'model' => 'SHHTDS',
+                'base_price' => 19.33,
                 'image_url' => null,
                 'is_active' => true,
-                'sizes' => ['S', 'M', 'L', 'XL'],
-                'colors' => [
-                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
-                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
-                    ['color_name' => 'Gray', 'color_codes' => ['#808080']],
-                ],
-            ],
-            [
-                'printful_id' => '4015', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'basic-4',
-                'variant_id' => '4015',
-                'name' => 'Unisex Heavy Cotton T-Shirt',
-                'description' => 'Durable unisex heavy cotton T-shirt - USA compatible',
-                'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex Heavy Cotton',
-                'base_price' => 23.99,
-                'image_url' => null,
-                'is_active' => true,
-                'sizes' => ['M', 'L', 'XL', '2XL'],
-                'colors' => [
-                    ['color_name' => 'White', 'color_codes' => ['#ffffff']],
-                    ['color_name' => 'Black', 'color_codes' => ['#000000']],
-                    ['color_name' => 'Navy', 'color_codes' => ['#000080']],
-                ],
-            ],
-            [
-                'printful_id' => '4016', // Valid Printful variant ID for unisex t-shirt
-                'printful_product_id' => 'basic-5',
-                'variant_id' => '4016',
-                'name' => 'Unisex V-Neck T-Shirt',
-                'description' => 'Stylish unisex V-neck T-shirt - perfect fit for all',
-                'type' => 'T-SHIRT',
-                'brand' => 'Printful',
-                'model' => 'Unisex V-Neck',
-                'base_price' => 20.99,
-                'image_url' => null,
-                'is_active' => true,
-                'sizes' => ['S', 'M', 'L', 'XL'],
+                'sizes' => ['S', 'M', 'L', 'XL', '2XL'],
                 'colors' => [
                     ['color_name' => 'White', 'color_codes' => ['#ffffff']],
                     ['color_name' => 'Black', 'color_codes' => ['#000000']],
