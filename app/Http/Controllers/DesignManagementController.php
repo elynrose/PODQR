@@ -255,9 +255,9 @@ class DesignManagementController extends Controller
                 'name' => $design->name,
                 'description' => $design->description,
                 'front_image_path' => $design->front_image_path,
-                'front_image_url' => $design->front_image_path ? asset('storage/' . $design->front_image_path) : null,
+                'front_image_url' => $design->front_image_url,
                 'back_image_path' => $design->back_image_path,
-                'back_image_url' => $design->back_image_path ? asset('storage/' . $design->back_image_path) : null,
+                'back_image_url' => $design->back_image_url,
             ]
         ]);
     }
