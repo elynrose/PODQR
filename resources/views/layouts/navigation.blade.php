@@ -1,6 +1,16 @@
 <!-- NAVIGATION DEBUG: Navigation file is loading -->
 <div style="background: red; color: white; padding: 5px; text-align: center;">NAVIGATION LOADED</div>
 
+<!-- ROUTE DEBUG -->
+<div style="background: blue; color: white; padding: 5px; text-align: center;">
+    Dashboard: {{ route('dashboard') }} | 
+    Wall: {{ route('wall.index') }} | 
+    Design: {{ route('design') }} | 
+    QR: {{ route('qr-generator') }} | 
+    Designs: {{ route('designs.index') }} | 
+    Orders: {{ route('orders.history') }}
+</div>
+
 <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm navbar-height" style="display: block !important; visibility: visible !important; position: relative !important; background: white !important; border-bottom: 1px solid #dee2e6 !important; min-height: 60px !important;">
     <div class="container" style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 0 15px !important;">
         <!-- Logo -->

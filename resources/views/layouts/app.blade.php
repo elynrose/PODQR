@@ -172,6 +172,25 @@
                 if (typeof bootstrap !== 'undefined') {
                     console.log('Bootstrap components available:', Object.keys(bootstrap));
                 }
+                
+                // Check if links are clickable
+                setTimeout(function() {
+                    const links = document.querySelectorAll('nav a');
+                    console.log('Navigation links found:', links.length);
+                    links.forEach(function(link, index) {
+                        console.log('Link ' + index + ':', link.href, 'Text:', link.textContent.trim());
+                        console.log('Link ' + index + ' clickable:', link.style.pointerEvents !== 'none');
+                    });
+                    
+                    // Test if links are actually working
+                    const testLink = document.querySelector('nav a[href*="dashboard"]');
+                    if (testLink) {
+                        console.log('Dashboard link found:', testLink.href);
+                        testLink.addEventListener('click', function(e) {
+                            console.log('Dashboard link clicked!');
+                        });
+                    }
+                }, 2000);
             }, 1000);
         </script>
         
