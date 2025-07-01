@@ -148,6 +148,15 @@
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         
+        <!-- Debug Script -->
+        <script>
+            console.log('App layout loaded');
+            console.log('jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'Not loaded');
+            console.log('Bootstrap version:', typeof bootstrap !== 'undefined' ? 'Loaded' : 'Not loaded');
+            console.log('Navigation element:', document.querySelector('nav'));
+            console.log('Auth check:', {{ Auth::check() ? 'true' : 'false' }});
+        </script>
+        
         <!-- Global Alert System -->
         <div id="globalAlertContainer" class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 9999; margin-top: 80px;">
             <!-- Alerts will be dynamically inserted here -->

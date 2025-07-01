@@ -1,3 +1,6 @@
+<!-- NAVIGATION DEBUG: Navigation file is loading -->
+<div style="background: red; color: white; padding: 5px; text-align: center;">NAVIGATION LOADED</div>
+
 <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm navbar-height">
     <div class="container">
         <!-- Logo -->
