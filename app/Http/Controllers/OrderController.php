@@ -1012,7 +1012,7 @@ class OrderController extends Controller
             foreach ($items as $index => $item) {
                 $product = Product::find($item['product_id']);
                 if (!$product || !$product->printful_id) {
-                    $variantValidationErrors[] = "Product '{$item['product_name']}' has no valid Printful variant ID.";
+                    $variantValidationErrors[] = "Product ID '{$item['product_id']}' has no valid Printful variant ID.";
                     continue;
                 }
 

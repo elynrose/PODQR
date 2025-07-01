@@ -681,6 +681,22 @@ class PrintfulService
                     $sizes = $usaVariants->pluck('size')->filter()->unique()->values()->toArray();
                     $colors = $usaVariants->pluck('color')->filter()->unique()->values()->toArray();
                     
+                    // Process colors - handle both string and array formats
+                    $processedColors = [];
+                    foreach ($colors as $color) {
+                        if (is_string($color)) {
+                            $processedColors[] = $color;
+                        } elseif (is_array($color) && isset($color['name'])) {
+                            $processedColors[] = $color['name'];
+                        } elseif (is_array($color) && isset($color['color_name'])) {
+                            $processedColors[] = $color['color_name'];
+                        } else {
+                            // Skip invalid color formats
+                            \Log::warning('PrintfulService: Skipping invalid color format', ['color' => $color]);
+                        }
+                    }
+                    $colors = array_unique($processedColors);
+                    
                     \Log::info('PrintfulService: Extracted sizes and colors', [
                         'product_id' => $product['id'],
                         'sizes' => $sizes,
