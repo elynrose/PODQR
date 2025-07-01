@@ -39,8 +39,9 @@ class OrderItem extends Model
         return $this->belongsTo(Design::class);
     }
 
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
+    // Product relationship removed since we're now working directly with Printful API
+    // public function product()
+    // {
+    //     return $this->belongsTo(Product::class);
+    // }
 }
