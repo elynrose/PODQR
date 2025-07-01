@@ -572,6 +572,9 @@ class OrderController extends Controller
             \Log::info('OrderController: Starting createPrintfulOrder for order ' . $order->id);
             \Log::info('OrderController: Order has ' . $order->orderItems->count() . ' items');
             
+            // Load the product relationship for all order items
+            $order->load('orderItems.product');
+            
             foreach ($order->orderItems as $item) {
                 \Log::info('OrderController: Processing order item ' . $item->id);
                 \Log::info('OrderController: Item details', [
@@ -589,7 +592,29 @@ class OrderController extends Controller
                 \Log::info('OrderController: Design data from JSON', ['design_data' => $designData]);
                 
                 // Use the printful_id (variant ID) directly from the product
-                $variantId = $item->product->printful_id;
+                $variantId = $item->product->printful_id ?? $item->printful_variant_id;
+                
+                // Validate the variant ID before using it
+                if (!$variantId) {
+                    \Log::error("No Printful variant ID found for order item", [
+                        'order_item_id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'product_printful_id' => $item->product->printful_id ?? 'null',
+                        'printful_variant_id' => $item->printful_variant_id ?? 'null'
+                    ]);
+                    continue;
+                }
+                
+                // Validate that the variant ID exists in Printful
+                $variantValidation = $this->printfulService->validateVariantId($variantId);
+                if (!$variantValidation['exists']) {
+                    \Log::error("Invalid Printful variant ID for order item", [
+                        'order_item_id' => $item->id,
+                        'variant_id' => $variantId,
+                        'validation_message' => $variantValidation['message']
+                    ]);
+                    continue;
+                }
                 
                 // Prioritize the actual design image (just the artwork) over product image
                 $fileUrl = null;

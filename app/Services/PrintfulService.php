@@ -993,9 +993,9 @@ class PrintfulService
         
         return collect([
             [
-                'printful_id' => '4012', // Valid Printful variant ID for unisex t-shirt
+                'printful_id' => '12585', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'fallback-1',
-                'variant_id' => '4012',
+                'variant_id' => '12585',
                 'name' => 'Unisex Classic T-Shirt',
                 'description' => 'Premium cotton unisex T-shirt with custom design - perfect for USA market',
                 'type' => 'T-SHIRT',
@@ -1013,9 +1013,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => '4013', // Valid Printful variant ID for unisex t-shirt
+                'printful_id' => '12586', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'fallback-2',
-                'variant_id' => '4013',
+                'variant_id' => '12586',
                 'name' => 'Unisex Premium T-Shirt',
                 'description' => 'High-quality cotton unisex T-shirt - USA compatible',
                 'type' => 'T-SHIRT',
@@ -1033,9 +1033,9 @@ class PrintfulService
                 ],
             ],
             [
-                'printful_id' => '4014', // Valid Printful variant ID for unisex t-shirt
+                'printful_id' => '12587', // Valid Printful variant ID for unisex t-shirt
                 'printful_product_id' => 'fallback-3',
-                'variant_id' => '4014',
+                'variant_id' => '12587',
                 'name' => 'Unisex Comfort T-Shirt',
                 'description' => 'Comfortable unisex T-shirt - perfect for all genders',
                 'type' => 'T-SHIRT',
