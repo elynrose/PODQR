@@ -27,32 +27,32 @@
             <!-- Primary Navigation Menu -->
             <ul class="navbar-nav me-auto" style="display: flex !important; flex-direction: row !important; padding-left: 0 !important; margin-bottom: 0 !important; list-style: none !important;">
                 <li class="nav-item" style="margin-right: 0.5rem !important;">
-                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
+                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}" onclick="console.log('Dashboard clicked!'); return true;" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important; background: yellow !important; border: 2px solid red !important; cursor: pointer !important;">
                         <i class="bi bi-speedometer2"></i> {{ __('Dashboard') }}
                     </a>
                 </li>
                 <li class="nav-item" style="margin-right: 0.5rem !important;">
-                    <a class="nav-link {{ request()->routeIs('wall.*') ? 'active' : '' }}" href="{{ route('wall.index') }}" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
+                    <a class="nav-link {{ request()->routeIs('wall.*') ? 'active' : '' }}" href="{{ route('wall.index') }}" onclick="console.log('Wall clicked!'); return true;" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
                         <i class="bi bi-grid"></i> {{ __('Wall') }}
                     </a>
                 </li>
                 <li class="nav-item" style="margin-right: 0.5rem !important;">
-                    <a class="nav-link {{ request()->routeIs('design') ? 'active' : '' }}" href="{{ route('design') }}" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
+                    <a class="nav-link {{ request()->routeIs('design') ? 'active' : '' }}" href="{{ route('design') }}" onclick="console.log('Design clicked!'); return true;" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
                         <i class="bi bi-tshirt"></i> {{ __('T-Shirt Designer') }}
                     </a>
                 </li>
                 <li class="nav-item" style="margin-right: 0.5rem !important;">
-                    <a class="nav-link {{ request()->routeIs('qr-generator') ? 'active' : '' }}" href="{{ route('qr-generator') }}" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
+                    <a class="nav-link {{ request()->routeIs('qr-generator') ? 'active' : '' }}" href="{{ route('qr-generator') }}" onclick="console.log('QR clicked!'); return true;" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
                         <i class="bi bi-qr-code"></i> {{ __('QR Generator') }}
                     </a>
                 </li>
                 <li class="nav-item" style="margin-right: 0.5rem !important;">
-                    <a class="nav-link {{ request()->routeIs('designs.index') ? 'active' : '' }}" href="{{ route('designs.index') }}" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
+                    <a class="nav-link {{ request()->routeIs('designs.index') ? 'active' : '' }}" href="{{ route('designs.index') }}" onclick="console.log('Designs clicked!'); return true;" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
                         <i class="bi bi-palette"></i> Designs
                     </a>
                 </li>
                 <li class="nav-item" style="margin-right: 0.5rem !important;">
-                    <a class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}" href="{{ route('orders.history') }}" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
+                    <a class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}" href="{{ route('orders.history') }}" onclick="console.log('Orders clicked!'); return true;" style="display: block !important; padding: 0.5rem 1rem !important; color: #6c757d !important; text-decoration: none !important;">
                         <i class="bi bi-cart"></i> Orders
                     </a>
                 </li>
