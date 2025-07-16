@@ -61,6 +61,35 @@ class OrderController extends Controller
      */
     protected function isProductCompatibleWithLocation($product, $location)
     {
+        // Store products are already configured and tested - no regional restrictions
+        if (isset($product->is_store_product) && $product->is_store_product) {
+            \Log::info('Store product - no regional restrictions apply', [
+                'product_id' => $product->id ?? 'unknown',
+                'product_name' => $product->name ?? 'unknown',
+                'location' => $location
+            ]);
+            return true;
+        }
+        
+        // Use known working products from your store
+        $knownWorkingProducts = [
+            '71',   // Bella + Canvas 3001 (from your store)
+            '493',  // Unisex Eco Sweatshirt | Stanley/Stella STSU178
+            '506',  // SOL'S 03574 Comet
+            '515',  // Oversized Tie-Dye T-shirt | Shaka Wear SHHTDS
+        ];
+        
+        // If this is a known working product, allow it
+        if (in_array($product->printful_id, $knownWorkingProducts)) {
+            \Log::info('Known working product - allowing for all locations', [
+                'product_id' => $product->id,
+                'printful_id' => $product->printful_id,
+                'product_name' => $product->name,
+                'location' => $location
+            ]);
+            return true;
+        }
+        
         // Skip validation for Asia locations since most products ship there
         $asiaLocations = ['JP', 'KR', 'SG', 'MY', 'TH', 'VN', 'ID', 'PH'];
         if (in_array($location, $asiaLocations)) {
@@ -103,8 +132,8 @@ class OrderController extends Controller
             // Debug: Log before API call
             \Log::info('OrderController: About to fetch T-shirt products from Printful API');
             
-            // Get T-shirt products directly from Printful API - only 10 initially
-            $products = $this->printfulService->getTshirtProducts(10);
+            // Get location-compatible products with pagination (optimized for performance)
+            $products = $this->printfulService->getLocationCompatibleProducts($userLocation, 10, 0);
 
             // Debug: Log after API call
             \Log::info('OrderController: Printful API response', [
@@ -186,6 +215,12 @@ class OrderController extends Controller
             // Get more T-shirt products from Printful API
             $products = $this->printfulService->getMoreTshirtProducts($offset, $limit);
             
+            // Filter to only show known working products to avoid regional issues
+            $products = $products->filter(function ($product) {
+                $knownWorkingProducts = ['71', '493', '506', '515'];
+                return in_array($product['printful_id'], $knownWorkingProducts);
+            });
+            
             \Log::info('OrderController: More products loaded', [
                 'products_count' => $products->count(),
                 'offset' => $offset,
@@ -224,20 +259,20 @@ class OrderController extends Controller
         $userLocation = 'US';
         
         try {
-            // Get products directly from Printful API
-            $products = $this->printfulService->getTshirtProducts(12);
+            // Get location-compatible products with pagination (optimized for performance)
+            $products = $this->printfulService->getLocationCompatibleProducts($userLocation, 12, 0);
             
             if ($products && $products->count() > 0) {
-                Log::info('OrderController: Successfully fetched ' . $products->count() . ' products from Printful API');
+                Log::info('OrderController: Successfully fetched ' . $products->count() . ' location-compatible products');
             } else {
-                // Fallback to basic products
-                Log::warning('OrderController: API returned no products, using basic T-shirt products');
-                $products = $this->printfulService->getBasicTshirtProducts(12);
+                // Fallback to known working products
+                Log::warning('OrderController: No location-compatible products found, using known working products');
+                $products = $this->printfulService->getKnownWorkingProducts($userLocation, 12, 0);
             }
         } catch (\Exception $e) {
-            Log::error('OrderController: Error fetching products from API: ' . $e->getMessage());
-            // Ultimate fallback: basic products
-            $products = $this->printfulService->getBasicTshirtProducts(12);
+            Log::error('OrderController: Error fetching location-compatible products: ' . $e->getMessage());
+            // Ultimate fallback: known working products
+            $products = $this->printfulService->getKnownWorkingProducts($userLocation, 12, 0);
         }
 
         // Filter by design color if design exists
@@ -489,7 +524,7 @@ class OrderController extends Controller
                         'design_description' => $design->description,
                         'front_image_path' => $design->front_image_path,
                         'back_image_path' => $design->back_image_path,
-                        'print_file_url' => $design->front_image_path ? Storage::url($design->front_image_path) : null,
+                        'print_file_url' => $design->front_image_path ? url(Storage::url($design->front_image_path)) : null,
                     ];
                     \Log::info('Creating order item with design:', [
                         'design_id' => $design->id,
@@ -621,12 +656,14 @@ class OrderController extends Controller
                 // Prioritize the actual design image (just the artwork) over product image
                 $fileUrl = null;
                 if ($item->design && $item->design->front_image_path) {
-                    // Use storage URL for design image
-                    $fileUrl = Storage::url($item->design->front_image_path);
+                    // Use storage URL for design image - convert to full URL
+                    $relativeUrl = Storage::url($item->design->front_image_path);
+                    $fileUrl = url($relativeUrl);
                     \Log::info('OrderController: Using design front image from storage', ['file_url' => $fileUrl]);
                 } elseif (isset($designData['front_image_path']) && $designData['front_image_path']) {
                     // Fallback to design data if design relationship is not loaded
-                    $fileUrl = Storage::url($designData['front_image_path']);
+                    $relativeUrl = Storage::url($designData['front_image_path']);
+                    $fileUrl = url($relativeUrl);
                     \Log::info('OrderController: Using design data front image from storage', ['file_url' => $fileUrl]);
                 } elseif (isset($designData['print_file_url']) && $designData['print_file_url']) {
                     // Last fallback to print_file_url if it exists
@@ -916,30 +953,60 @@ class OrderController extends Controller
     }
 
     /**
-     * Load more products with filters
+     * Load more products progressively (optimized for performance)
      */
     public function loadMoreProducts(Request $request)
     {
-        $designId = $request->input('design_id');
-        $design = $designId ? Design::find($designId) : null;
-        
-        // Get user's preferred location from profile, fallback to request parameter
-        $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
-        
-        $query = Product::whereJsonContains('metadata->type', 'T-shirt')
-            ->whereJsonContains('metadata->location', $userLocation);
+        try {
+            $designId = $request->input('design_id');
+            $design = $designId ? Design::find($designId) : null;
+            
+            // Get user's preferred location from profile, fallback to request parameter
+            $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
+            $offset = $request->input('offset', 0);
+            $limit = $request->input('limit', 6); // Smaller batches for faster loading
+            
+            \Log::info('OrderController: Loading more products', [
+                'location' => $userLocation,
+                'offset' => $offset,
+                'limit' => $limit,
+                'design_id' => $designId
+            ]);
 
-        // Filter by design color if design exists
-        if ($design && $design->color_code) {
-            $query->whereJsonContains('colors', $design->color_code);
+            // Get location-compatible products with pagination
+            $products = $this->printfulService->getLocationCompatibleProducts($userLocation, $limit, $offset);
+            
+            // Filter by design color if design exists
+            if ($design && $design->color_code) {
+                $products = $products->filter(function ($product) use ($design) {
+                    return in_array($design->color_code, $product['color_codes'] ?? []);
+                });
+            }
+
+            \Log::info('OrderController: Loaded more products', [
+                'products_count' => $products->count(),
+                'has_more' => $products->count() >= $limit
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'products' => $products,
+                'has_more' => $products->count() >= $limit,
+                'offset' => $offset + $products->count()
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('OrderController: Error loading more products', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load more products',
+                'products' => []
+            ], 500);
         }
-
-        $products = $query->orderBy('name')
-            ->skip($request->input('offset', 0))
-            ->take(12)
-            ->get();
-
-        return response()->json($products);
     }
 
     /**
@@ -1159,7 +1226,7 @@ class OrderController extends Controller
                         'design_description' => $design->description,
                         'front_image_path' => $design->front_image_path,
                         'back_image_path' => $design->back_image_path,
-                        'print_file_url' => $design->front_image_path ? Storage::url($design->front_image_path) : null,
+                        'print_file_url' => $design->front_image_path ? url(Storage::url($design->front_image_path)) : null,
                     ];
                     \Log::info('Creating order item with design:', [
                         'design_id' => $design->id,

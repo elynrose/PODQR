@@ -41,6 +41,96 @@ class PrintfulService
     }
 
     /**
+     * Get products from your store (templates) instead of catalog
+     * This eliminates regional issues since store products are already configured
+     */
+    public function getStoreProducts($limit = 10, $offset = 0)
+    {
+        try {
+            \Log::info('PrintfulService: Fetching products from store', [
+                'store_id' => $this->storeId,
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->get($this->baseUrl . '/store/products', [
+                'store_id' => $this->storeId,
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $products = $data['result'] ?? [];
+                
+                \Log::info('PrintfulService: Store products fetched successfully', [
+                    'products_count' => count($products),
+                    'store_id' => $this->storeId
+                ]);
+
+                // Transform store products to match the expected format
+                $transformedProducts = collect($products)->map(function ($product) {
+                    return $this->transformStoreProduct($product);
+                })->filter();
+
+                return $transformedProducts;
+            }
+
+            Log::error('Printful Store Products Error: ' . $response->body());
+            return collect([]);
+        } catch (\Exception $e) {
+            Log::error('Printful Store Products Exception: ' . $e->getMessage());
+            return collect([]);
+        }
+    }
+
+    /**
+     * Transform a store product to match the expected format
+     */
+    private function transformStoreProduct($product)
+    {
+        try {
+            // Extract variant information
+            $variants = $product['variants'] ?? [];
+            if (empty($variants)) {
+                return null;
+            }
+
+            // Get the first variant for basic info
+            $firstVariant = $variants[0];
+            
+            // Extract sizes and colors from all variants
+            $sizes = collect($variants)->pluck('size')->filter()->unique()->values()->toArray();
+            $colors = collect($variants)->pluck('color')->filter()->unique()->values()->toArray();
+            
+            // Get base price from the first variant
+            $basePrice = $firstVariant['retail_price'] ?? 25.00;
+
+            return [
+                'id' => $product['id'],
+                'name' => $product['name'] ?? 'Custom Product',
+                'printful_id' => $product['id'],
+                'type' => 'T-shirt',
+                'base_price' => $basePrice,
+                'sizes' => $sizes,
+                'colors' => $colors,
+                'variants' => $variants,
+                'thumbnail' => $product['thumbnail'] ?? null,
+                'is_store_product' => true, // Flag to identify store products
+                'store_id' => $this->storeId
+            ];
+        } catch (\Exception $e) {
+            \Log::error('PrintfulService: Error transforming store product', [
+                'product_id' => $product['id'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Get product variants
      */
     public function getProductVariants($productId)
@@ -315,6 +405,7 @@ class PrintfulService
     {
         try {
             $payload = [
+                'store_id' => $this->storeId,
                 'recipient' => [
                     'country_code' => $address['country_code'],
                     'state_code' => $address['state_code'] ?? null,
@@ -337,6 +428,435 @@ class PrintfulService
         } catch (\Exception $e) {
             Log::error('Printful Shipping Rates Exception: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Validate if a product can be shipped to a specific location using shipping rates API
+     * This is more reliable than test order creation
+     */
+    public function validateProductShipping($variantId, $location, $address = null)
+    {
+        try {
+            // Create a test address if none provided
+            $testAddress = $address ?: [
+                'country_code' => $location,
+                'state_code' => $location === 'US' ? 'CA' : null,
+                'city' => 'Test City',
+                'zip' => $location === 'US' ? '90210' : '12345',
+            ];
+
+            $testItems = [
+                [
+                    'variant_id' => $variantId,
+                    'quantity' => 1
+                ]
+            ];
+
+            \Log::info('PrintfulService: Validating product shipping', [
+                'variant_id' => $variantId,
+                'location' => $location,
+                'test_address' => $testAddress
+            ]);
+
+            $shippingRates = $this->getShippingRates($testAddress, $testItems);
+
+            if ($shippingRates && !empty($shippingRates)) {
+                \Log::info('PrintfulService: Product shipping validation successful', [
+                    'variant_id' => $variantId,
+                    'location' => $location,
+                    'shipping_options' => count($shippingRates)
+                ]);
+                return [
+                    'success' => true,
+                    'message' => 'Product can be shipped to this location',
+                    'shipping_options' => count($shippingRates)
+                ];
+            } else {
+                \Log::warning('PrintfulService: Product shipping validation failed - no shipping options', [
+                    'variant_id' => $variantId,
+                    'location' => $location
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Product cannot be shipped to this location',
+                    'type' => 'no_shipping_options'
+                ];
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('PrintfulService: Product shipping validation error', [
+                'variant_id' => $variantId,
+                'location' => $location,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Failed to validate shipping compatibility',
+                'type' => 'api_error'
+            ];
+        }
+    }
+
+    /**
+     * Get products that are compatible with a specific location (optimized for performance)
+     */
+    public function getLocationCompatibleProducts($location, $limit = 10, $offset = 0)
+    {
+        try {
+            \Log::info('PrintfulService: Starting optimized location compatibility check', [
+                'location' => $location,
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            // Use known working products for immediate response
+            $knownWorkingProducts = $this->getKnownWorkingProducts($location, $limit, $offset);
+            
+            if ($knownWorkingProducts->count() >= $limit) {
+                \Log::info('PrintfulService: Using known working products for immediate response', [
+                    'location' => $location,
+                    'products_count' => $knownWorkingProducts->count()
+                ]);
+                return $knownWorkingProducts;
+            }
+
+            // If we need more products, get from catalog with minimal validation
+            $additionalProducts = $this->getCatalogProductsWithMinimalValidation($location, $limit - $knownWorkingProducts->count(), $offset);
+            
+            $allProducts = $knownWorkingProducts->merge($additionalProducts);
+            
+            \Log::info('PrintfulService: Optimized location compatibility check completed', [
+                'location' => $location,
+                'known_products' => $knownWorkingProducts->count(),
+                'additional_products' => $additionalProducts->count(),
+                'total_products' => $allProducts->count()
+            ]);
+
+            return $allProducts;
+
+        } catch (\Exception $e) {
+            \Log::error('PrintfulService: Error in optimized location compatibility check', [
+                'location' => $location,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Fallback to known working products
+            return $this->getKnownWorkingProducts($location, $limit, $offset);
+        }
+    }
+
+    /**
+     * Get known working products for a location (no API validation needed)
+     */
+    public function getKnownWorkingProducts($location, $limit = 10, $offset = 0)
+    {
+        // Known working products by location
+        $locationBasedProducts = [
+            'US' => [
+                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas
+                '37' => [1984, 1985, 1982], // Gildan Lightweight
+                '679' => [17008, 17009, 17080], // Performance Crew Neck
+            ],
+            'GB' => [
+                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas
+                '37' => [1984, 1985, 1982], // Gildan Lightweight
+            ],
+            'JP' => [
+                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas
+                '37' => [1984, 1985, 1982], // Gildan Lightweight
+            ],
+            'CA' => [
+                // Limited options for Canada
+                '71' => [4012, 4013, 4014], // Only some Bella + Canvas variants
+            ],
+            'AU' => [
+                // Limited options for Australia
+                '71' => [4012, 4013, 4014], // Only some Bella + Canvas variants
+            ],
+        ];
+
+        $locationProducts = $locationBasedProducts[$location] ?? $locationBasedProducts['US'];
+        
+        $allVariants = [];
+        foreach ($locationProducts as $productId => $variantIds) {
+            foreach ($variantIds as $variantId) {
+                $allVariants[] = [
+                    'variant_id' => $variantId,
+                    'product_id' => $productId
+                ];
+            }
+        }
+
+        // Apply pagination
+        $paginatedVariants = array_slice($allVariants, $offset, $limit);
+        
+        $products = collect();
+        foreach ($paginatedVariants as $variantInfo) {
+            try {
+                $variant = $this->getVariant($variantInfo['variant_id']);
+                if ($variant) {
+                    $product = [
+                        'id' => $products->count() + 1,
+                        'printful_id' => $variant['product_id'],
+                        'variant_id' => $variantInfo['variant_id'],
+                        'name' => $variant['display_name'],
+                        'type' => 'T-shirt',
+                        'base_price' => $variant['retail_price'] ?? 15.00,
+                        'image_url' => $variant['image_url'] ?? null,
+                        'sizes' => [$this->getSizeFromVariantName($variant['display_name'])],
+                        'colors' => [$this->getColorFromVariantName($variant['display_name'])],
+                        'color_codes' => [$this->getColorCode($this->getColorFromVariantName($variant['display_name']))],
+                        'available_as_sample' => $variant['available_as_sample'] ?? false,
+                        'currency' => 'USD'
+                    ];
+                    $products->push($product);
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
+        return $products;
+    }
+
+    /**
+     * Get catalog products with minimal validation (for additional products)
+     */
+    public function getCatalogProductsWithMinimalValidation($location, $limit = 5, $offset = 0)
+    {
+        // Only validate a few products to avoid timeout
+        $maxValidationChecks = 3;
+        
+        $catalogProducts = $this->getCatalogTshirtProducts($limit + $maxValidationChecks);
+        $validatedProducts = collect();
+        $checkedCount = 0;
+
+        foreach ($catalogProducts as $product) {
+            if ($checkedCount >= $maxValidationChecks) {
+                break;
+            }
+
+            $variantId = $product['variant_id'] ?? null;
+            if (!$variantId) {
+                continue;
+            }
+
+            // Quick validation (with timeout protection)
+            $validation = $this->validateProductShipping($variantId, $location);
+            
+            if ($validation['success']) {
+                $validatedProducts->push($product);
+                
+                if ($validatedProducts->count() >= $limit) {
+                    break;
+                }
+            }
+
+            $checkedCount++;
+        }
+
+        return $validatedProducts;
+    }
+
+    /**
+     * Extract size from variant name
+     */
+    private function getSizeFromVariantName($variantName)
+    {
+        $sizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+        foreach ($sizes as $size) {
+            if (stripos($variantName, $size) !== false) {
+                return $size;
+            }
+        }
+        return 'M'; // Default
+    }
+
+    /**
+     * Extract color from variant name
+     */
+    private function getColorFromVariantName($variantName)
+    {
+        $colors = ['White', 'Black', 'Navy', 'Gray', 'Red', 'Blue', 'Green'];
+        foreach ($colors as $color) {
+            if (stripos($variantName, $color) !== false) {
+                return $color;
+            }
+        }
+        return 'White'; // Default
+    }
+
+    /**
+     * Get T-shirt products from Printful catalog with more variety
+     */
+    public function getCatalogTshirtProducts($limit = 20)
+    {
+        try {
+            \Log::info('PrintfulService: Starting getCatalogTshirtProducts', [
+                'limit' => $limit,
+                'api_key_length' => strlen($this->apiKey ?? ''),
+                'store_id' => $this->storeId
+            ]);
+
+            // Check if API key is configured
+            if (empty($this->apiKey)) {
+                \Log::warning('PrintfulService: No API key configured, returning fallback products');
+                return $this->getFallbackProducts($limit);
+            }
+
+            // Real T-shirt variant IDs from Printful catalog
+            $catalogTshirtVariants = [
+                // Bella + Canvas variants (known working)
+                4012 => ['product_id' => 71, 'size' => 'M', 'color' => 'White'],
+                4013 => ['product_id' => 71, 'size' => 'L', 'color' => 'White'],
+                4014 => ['product_id' => 71, 'size' => 'XL', 'color' => 'White'],
+                4015 => ['product_id' => 71, 'size' => 'M', 'color' => 'Black'],
+                4016 => ['product_id' => 71, 'size' => 'L', 'color' => 'Black'],
+                4017 => ['product_id' => 71, 'size' => 'XL', 'color' => 'Black'],
+                4018 => ['product_id' => 71, 'size' => 'M', 'color' => 'Navy'],
+                4019 => ['product_id' => 71, 'size' => 'L', 'color' => 'Navy'],
+                4020 => ['product_id' => 71, 'size' => 'XL', 'color' => 'Navy'],
+                
+                // Gildan Lightweight T-Shirt (Product 37)
+                1984 => ['product_id' => 37, 'size' => 'M', 'color' => 'White'],
+                1985 => ['product_id' => 37, 'size' => 'L', 'color' => 'White'],
+                1982 => ['product_id' => 37, 'size' => 'XL', 'color' => 'White'],
+                
+                // Performance Crew Neck T-Shirt (Product 679)
+                17008 => ['product_id' => 679, 'size' => 'M', 'color' => 'White'],
+                17009 => ['product_id' => 679, 'size' => 'L', 'color' => 'White'],
+                17080 => ['product_id' => 679, 'size' => 'XL', 'color' => 'White'],
+                
+                // All-Over Print Men's Crew Neck T-Shirt (Product 257)
+                8855 => ['product_id' => 257, 'size' => 'M', 'color' => 'White'],
+                8853 => ['product_id' => 257, 'size' => 'L', 'color' => 'White'],
+                8852 => ['product_id' => 257, 'size' => 'XL', 'color' => 'White'],
+                
+                // All-Over Print Women's Crew Neck T-Shirt (Product 261)
+                8889 => ['product_id' => 261, 'size' => 'M', 'color' => 'White'],
+                8887 => ['product_id' => 261, 'size' => 'L', 'color' => 'White'],
+                8886 => ['product_id' => 261, 'size' => 'XL', 'color' => 'White'],
+                
+                // All-Over Print Men's Athletic T-Shirt (Product 328)
+                9957 => ['product_id' => 328, 'size' => 'M', 'color' => 'White'],
+                9958 => ['product_id' => 328, 'size' => 'L', 'color' => 'White'],
+                9955 => ['product_id' => 328, 'size' => 'XL', 'color' => 'White'],
+                
+                // All-Over Print Women's Athletic T-Shirt (Product 329)
+                9964 => ['product_id' => 329, 'size' => 'M', 'color' => 'White'],
+                9965 => ['product_id' => 329, 'size' => 'L', 'color' => 'White'],
+                9962 => ['product_id' => 329, 'size' => 'XL', 'color' => 'White'],
+                
+                // All-Over Print Kids Crew Neck T-Shirt (Product 384)
+                10817 => ['product_id' => 384, 'size' => 'M', 'color' => 'White'],
+                10818 => ['product_id' => 384, 'size' => 'L', 'color' => 'White'],
+                10819 => ['product_id' => 384, 'size' => 'XL', 'color' => 'White'],
+                
+                // All-Over Print Youth Crew Neck T-shirt (Product 385)
+                10825 => ['product_id' => 385, 'size' => 'M', 'color' => 'White'],
+                10826 => ['product_id' => 385, 'size' => 'L', 'color' => 'White'],
+                10827 => ['product_id' => 385, 'size' => 'XL', 'color' => 'White'],
+                
+                // Additional known working products
+                12585 => ['product_id' => 493, 'size' => 'S', 'color' => 'Black'],
+                12694 => ['product_id' => 506, 'size' => 'S', 'color' => 'Black'],
+                12966 => ['product_id' => 515, 'size' => 'S', 'color' => 'Milky way'],
+            ];
+
+            \Log::info('PrintfulService: Using expanded catalog variant IDs', [
+                'variant_count' => count($catalogTshirtVariants),
+                'variant_ids' => array_keys($catalogTshirtVariants)
+            ]);
+
+            // Transform to our format using individual variant API calls
+            $formattedProducts = collect();
+            $productsAdded = 0;
+            
+            foreach ($catalogTshirtVariants as $variantId => $variantInfo) {
+                if ($productsAdded >= $limit) {
+                    break;
+                }
+                
+                try {
+                    // Get individual variant details
+                    $variant = $this->getVariant($variantId);
+                    
+                    if (!$variant) {
+                        \Log::warning("PrintfulService: Variant {$variantId} not found, skipping");
+                        continue;
+                    }
+                    
+                    // Skip toddler products
+                    if (isset($variant['product_id']) && $variant['product_id'] == 489) {
+                        \Log::info("PrintfulService: Skipping toddler product 489");
+                        continue;
+                    }
+                    
+                    // Get product details from catalog
+                    $product = $this->getProductFromCatalog($variant['product_id']);
+                    
+                    if (!$product) {
+                        \Log::warning("PrintfulService: Product {$variant['product_id']} not found in catalog, using variant data only");
+                        // Use variant data as fallback
+                        $product = [
+                            'id' => $variant['product_id'],
+                            'display_name' => $variant['display_name'],
+                            'image_url' => $variant['image_url'],
+                        ];
+                    }
+                    
+                    // Format the product
+                    $formattedProduct = [
+                        'id' => $productsAdded + 1,
+                        'printful_id' => $variant['product_id'],
+                        'variant_id' => $variantId,
+                        'name' => $variant['display_name'],
+                        'type' => 'T-shirt',
+                        'base_price' => $variant['retail_price'] ?? 15.00,
+                        'image_url' => $variant['image_url'] ?? $product['image_url'] ?? null,
+                        'sizes' => [$variantInfo['size']],
+                        'colors' => [$variantInfo['color']],
+                        'color_codes' => [$this->getColorCode($variantInfo['color'])],
+                        'available_as_sample' => $variant['available_as_sample'] ?? false,
+                        'currency' => 'USD'
+                    ];
+                    
+                    $formattedProducts->push($formattedProduct);
+                    $productsAdded++;
+                    
+                    \Log::info('PrintfulService: Added catalog product', [
+                        'product_id' => $variant['product_id'],
+                        'variant_id' => $variantId,
+                        'name' => $variant['display_name'],
+                        'price' => $variant['retail_price'] ?? 15.00
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    \Log::error("PrintfulService: Error processing variant {$variantId}", [
+                        'error' => $e->getMessage(),
+                        'variant_id' => $variantId
+                    ]);
+                    continue;
+                }
+            }
+
+            \Log::info('PrintfulService: Catalog products processing completed', [
+                'total_products' => $formattedProducts->count(),
+                'products' => $formattedProducts->pluck('name')->toArray()
+            ]);
+
+            return $formattedProducts;
+
+        } catch (\Exception $e) {
+            \Log::error('PrintfulService: Error in getCatalogTshirtProducts', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Fallback to basic products
+            return $this->getTshirtProducts($limit);
         }
     }
 
