@@ -665,6 +665,13 @@ class PrintfulService
      */
     private function getSizeFromVariantName($variantName)
     {
+        // Look for size patterns in the variant name
+        // Common patterns: "(White / M)", "(Black / L)", "(Navy / XL)", etc.
+        if (preg_match('/\([^)]*\/(\s*)(XS|S|M|L|XL|2XL|3XL)(\s*)\)$/i', $variantName, $matches)) {
+            return strtoupper($matches[2]);
+        }
+        
+        // Fallback: look for size anywhere in the name
         $sizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
         foreach ($sizes as $size) {
             if (stripos($variantName, $size) !== false) {
@@ -679,7 +686,27 @@ class PrintfulService
      */
     private function getColorFromVariantName($variantName)
     {
-        $colors = ['White', 'Black', 'Navy', 'Gray', 'Red', 'Blue', 'Green'];
+        // Look for color patterns in the variant name
+        // Common patterns: "(White / M)", "(Black / L)", "(Navy / XL)", etc.
+        if (preg_match('/\(([A-Za-z\s]+)\s*\/\s*[A-Z]+\)$/i', $variantName, $matches)) {
+            $color = trim($matches[1]);
+            // Map common color variations
+            $colorMap = [
+                'white' => 'White',
+                'black' => 'Black',
+                'navy' => 'Navy',
+                'gray' => 'Gray',
+                'grey' => 'Gray',
+                'red' => 'Red',
+                'blue' => 'Blue',
+                'green' => 'Green',
+                'milky way' => 'Milky way'
+            ];
+            return $colorMap[strtolower($color)] ?? ucfirst($color);
+        }
+        
+        // Fallback: look for color anywhere in the name
+        $colors = ['White', 'Black', 'Navy', 'Gray', 'Red', 'Blue', 'Green', 'Milky way'];
         foreach ($colors as $color) {
             if (stripos($variantName, $color) !== false) {
                 return $color;
