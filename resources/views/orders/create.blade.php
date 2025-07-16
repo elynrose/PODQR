@@ -715,15 +715,20 @@
                 productCardMap.set(productId, card);
             });
             
+            console.log('Product card map keys:', Array.from(productCardMap.keys()));
+            console.log('Filtered product IDs:', products.map(p => p.id));
+            
             // Show/hide cards based on filtered products
             productCards.forEach(card => {
                 card.style.display = 'none'; // Hide all cards first
             });
             
             products.forEach(product => {
-                const card = productCardMap.get(product.id);
+                const card = productCardMap.get(product.id.toString());
                 if (card) {
                     card.style.display = 'block'; // Show matching cards
+                } else {
+                    console.log('Card not found for product ID:', product.id);
                 }
             });
         }
@@ -910,7 +915,7 @@
         // Initialize allProducts array with current products
         const productCards = document.querySelectorAll('.product-card');
         allProducts = Array.from(productCards).map(card => {
-            return {
+            const product = {
                 id: card.dataset.productId,
                 variant_id: card.dataset.variantId,
                 type: card.dataset.type,
@@ -920,6 +925,8 @@
                 name: card.querySelector('.card-title').textContent,
                 image_url: card.querySelector('img')?.src || null
             };
+            console.log('Initialized product:', product);
+            return product;
         });
         
         console.log('Initialized allProducts:', allProducts.length, 'products');
