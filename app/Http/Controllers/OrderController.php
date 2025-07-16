@@ -733,27 +733,37 @@ class OrderController extends Controller
                     continue;
                 }
                 
-                // Determine the correct file type for T-shirts
-                $fileType = 'front'; // Default for front designs
+                // Determine the correct file type based on product variant requirements
+                $fileType = 'default'; // Default file type for most products
                 
-                // For T-shirts, we only support front and back
-                // The file type is determined by which design image is being used
+                // Check if this is a T-shirt variant that supports front/back
                 if (str_contains($fileUrl, 'back_')) {
                     $fileType = 'back';
-                } else {
-                    $fileType = 'front';
+                } elseif (str_contains($fileUrl, 'front_') || str_contains($fileUrl, 'designs/')) {
+                    // For T-shirts and other products, use 'default' instead of 'front'
+                    $fileType = 'default';
                 }
                 
-                \Log::info('OrderController: File type for T-shirt', [
+                \Log::info('OrderController: File type determination', [
                     'product_id' => $item->product_id,
+                    'variant_id' => $variantId,
                     'file_url' => $fileUrl,
                     'selected_file_type' => $fileType
                 ]);
                 
+                // Build options with required fields
                 $options = [
                     'size' => $size,
                     'color' => $color,
                 ];
+                
+                // Add stitch_color option for products that require it
+                // Most T-shirts and similar products require stitch color
+                if (in_array($color, ['White', 'white', '#ffffff'])) {
+                    $options['stitch_color'] = 'white';
+                } else {
+                    $options['stitch_color'] = 'black';
+                }
                 
                 $printfulItems[] = [
                     'variant_id' => $variantId,
