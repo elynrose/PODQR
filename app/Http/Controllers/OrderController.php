@@ -667,43 +667,71 @@ class OrderController extends Controller
                     continue;
                 }
                 
-                // Prioritize the actual design image (just the artwork) over product image
-                $fileUrl = null;
+                // Collect all available design images (front and back)
+                $designFiles = [];
+                
+                // Check for front image
+                $frontImageUrl = null;
                 if ($item->design && $item->design->front_image_path) {
-                    // Use storage URL for design image - convert to full URL
                     $relativeUrl = Storage::url($item->design->front_image_path);
-                    $fileUrl = url($relativeUrl);
-                    \Log::info('OrderController: Using design front image from storage', ['file_url' => $fileUrl]);
+                    $frontImageUrl = url($relativeUrl);
+                    \Log::info('OrderController: Found design front image', ['file_url' => $frontImageUrl]);
                 } elseif (isset($designData['front_image_path']) && $designData['front_image_path']) {
-                    // Fallback to design data if design relationship is not loaded
                     $relativeUrl = Storage::url($designData['front_image_path']);
-                    $fileUrl = url($relativeUrl);
-                    \Log::info('OrderController: Using design data front image from storage', ['file_url' => $fileUrl]);
-                } elseif (isset($designData['print_file_url']) && $designData['print_file_url']) {
-                    // Last fallback to print_file_url if it exists
-                    $fileUrl = $designData['print_file_url'];
-                    \Log::info('OrderController: Using print file URL', ['file_url' => $fileUrl]);
+                    $frontImageUrl = url($relativeUrl);
+                    \Log::info('OrderController: Found front image in design data', ['file_url' => $frontImageUrl]);
                 }
                 
-                // Validate that the image URL is accessible and public
-                if ($fileUrl && !filter_var($fileUrl, FILTER_VALIDATE_URL)) {
-                    \Log::error("Invalid image URL format", ['file_url' => $fileUrl]);
-                    continue; // Skip this item if URL is invalid
+                // Check for back image
+                $backImageUrl = null;
+                if ($item->design && $item->design->back_image_path) {
+                    $relativeUrl = Storage::url($item->design->back_image_path);
+                    $backImageUrl = url($relativeUrl);
+                    \Log::info('OrderController: Found design back image', ['file_url' => $backImageUrl]);
+                } elseif (isset($designData['back_image_path']) && $designData['back_image_path']) {
+                    $relativeUrl = Storage::url($designData['back_image_path']);
+                    $backImageUrl = url($relativeUrl);
+                    \Log::info('OrderController: Found back image in design data', ['file_url' => $backImageUrl]);
                 }
                 
-                // Ensure the URL is publicly accessible (not localhost)
-                if ($fileUrl && (str_contains($fileUrl, 'localhost') || str_contains($fileUrl, '127.0.0.1'))) {
-                    \Log::error("Image URL is not publicly accessible", ['file_url' => $fileUrl]);
-                    continue; // Skip this item if URL is not public
+                // Validate image URLs and add to design files
+                if ($frontImageUrl) {
+                    if (filter_var($frontImageUrl, FILTER_VALIDATE_URL) && 
+                        !str_contains($frontImageUrl, 'localhost') && 
+                        !str_contains($frontImageUrl, '127.0.0.1')) {
+                        $designFiles[] = [
+                            'url' => $frontImageUrl,
+                            'type' => 'default'
+                        ];
+                        \Log::info('OrderController: Added valid front image', ['file_url' => $frontImageUrl]);
+                    } else {
+                        \Log::error("Front image URL is invalid or not publicly accessible", ['file_url' => $frontImageUrl]);
+                    }
                 }
                 
-                // If no design image is available, this order cannot be sent to Printful
-                if (!$fileUrl) {
-                    \Log::error("Order item {$item->id} has no design image available for Printful", [
+                if ($backImageUrl) {
+                    if (filter_var($backImageUrl, FILTER_VALIDATE_URL) && 
+                        !str_contains($backImageUrl, 'localhost') && 
+                        !str_contains($backImageUrl, '127.0.0.1')) {
+                        $designFiles[] = [
+                            'url' => $backImageUrl,
+                            'type' => 'back'
+                        ];
+                        \Log::info('OrderController: Added valid back image', ['file_url' => $backImageUrl]);
+                    } else {
+                        \Log::error("Back image URL is invalid or not publicly accessible", ['file_url' => $backImageUrl]);
+                    }
+                }
+                
+                // If no valid images are available, this order cannot be sent to Printful
+                if (empty($designFiles)) {
+                    \Log::error("Order item {$item->id} has no valid design images available for Printful", [
                         'order_id' => $order->id,
                         'item_id' => $item->id,
                         'design_id' => $item->design_id,
                         'product_id' => $item->product_id,
+                        'front_image_url' => $frontImageUrl,
+                        'back_image_url' => $backImageUrl,
                         'design_data' => $designData
                     ]);
                     continue;
@@ -714,7 +742,7 @@ class OrderController extends Controller
                 
                 \Log::info('OrderController: Item data', [
                     'variant_id' => $variantId,
-                    'file_url' => $fileUrl,
+                    'design_files_count' => count($designFiles),
                     'size' => $size,
                     'color' => $color,
                     'quantity' => $item->quantity
@@ -724,8 +752,8 @@ class OrderController extends Controller
                     \Log::error("No Printful variant ID found for product: " . $item->product_id);
                     continue;
                 }
-                if (!$fileUrl) {
-                    \Log::error("No print file URL for order item: " . $item->id);
+                if (empty($designFiles)) {
+                    \Log::error("No design files for order item: " . $item->id);
                     continue;
                 }
                 if (!$size) {
@@ -733,22 +761,10 @@ class OrderController extends Controller
                     continue;
                 }
                 
-                // Determine the correct file type based on product variant requirements
-                $fileType = 'default'; // Default file type for most products
-                
-                // Check if this is a T-shirt variant that supports front/back
-                if (str_contains($fileUrl, 'back_')) {
-                    $fileType = 'back';
-                } elseif (str_contains($fileUrl, 'front_') || str_contains($fileUrl, 'designs/')) {
-                    // For T-shirts and other products, use 'default' instead of 'front'
-                    $fileType = 'default';
-                }
-                
-                \Log::info('OrderController: File type determination', [
+                \Log::info('OrderController: Design files for item', [
                     'product_id' => $item->product_id,
                     'variant_id' => $variantId,
-                    'file_url' => $fileUrl,
-                    'selected_file_type' => $fileType
+                    'design_files' => $designFiles
                 ]);
                 
                 // Build options with required fields
@@ -768,12 +784,7 @@ class OrderController extends Controller
                 $printfulItems[] = [
                     'variant_id' => $variantId,
                     'quantity' => $item->quantity,
-                    'files' => [
-                        [
-                            'url' => $fileUrl,
-                            'type' => $fileType,
-                        ]
-                    ],
+                    'files' => $designFiles,
                     'options' => $options,
                 ];
                 
