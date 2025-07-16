@@ -598,7 +598,7 @@ class PrintfulService
                 $variant = $this->getVariant($variantInfo['variant_id']);
                 if ($variant) {
                     $product = [
-                        'id' => $products->count() + 1,
+                        'id' => $variantInfo['variant_id'], // Use variant ID as unique identifier
                         'printful_id' => $variant['product_id'],
                         'variant_id' => $variantInfo['variant_id'],
                         'name' => $variant['display_name'],
@@ -836,7 +836,7 @@ class PrintfulService
                     
                     // Format the product
                     $formattedProduct = [
-                        'id' => $productsAdded + 1,
+                        'id' => $variantId, // Use variant ID as unique identifier
                         'printful_id' => $variant['product_id'],
                         'variant_id' => $variantId,
                         'name' => $variant['display_name'],

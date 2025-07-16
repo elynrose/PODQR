@@ -64,8 +64,8 @@
                                                                         </label>
                                                                         
                                                                         @foreach($sizes as $size)
-                                                                            <input type="radio" class="btn-check" name="sizeFilter" id="size{{ $size }}" value="{{ $size }}">
-                                                                            <label class="btn btn-outline-primary btn-sm" for="size{{ $size }}">
+                                                                            <input type="radio" class="btn-check" name="sizeFilter" id="size_{{ str_replace([' ', '+', '-'], '_', $size) }}" value="{{ $size }}">
+                                                                            <label class="btn btn-outline-primary btn-sm" for="size_{{ str_replace([' ', '+', '-'], '_', $size) }}">
                                                                                 {{ $size }}
                                                                             </label>
                                                                         @endforeach
@@ -82,8 +82,8 @@
                                                                         </label>
                                                                         
                                                                         @foreach($colors as $color)
-                                                                            <input type="radio" class="btn-check" name="colorFilter" id="color{{ $color }}" value="{{ $color }}">
-                                                                            <label class="btn btn-outline-primary btn-sm" for="color{{ $color }}">
+                                                                            <input type="radio" class="btn-check" name="colorFilter" id="color_{{ str_replace([' ', '+', '-'], '_', $color) }}" value="{{ $color }}">
+                                                                            <label class="btn btn-outline-primary btn-sm" for="color_{{ str_replace([' ', '+', '-'], '_', $color) }}">
                                                                                 <span class="d-inline-block me-2" style="width: 12px; height: 12px; background-color: {{ $color == 'White' ? '#ffffff' : ($color == 'Black' ? '#000000' : ($color == 'Navy' ? '#000080' : '#cccccc')) }}; border: 1px solid #ddd; border-radius: 2px;"></span>
                                                                                 {{ $color }}
                                                                             </label>
@@ -101,8 +101,8 @@
                                                                         </label>
                                                                         
                                                                         @foreach($types as $type)
-                                                                            <input type="radio" class="btn-check" name="typeFilter" id="type{{ $type }}" value="{{ $type }}">
-                                                                            <label class="btn btn-outline-primary btn-sm" for="type{{ $type }}">
+                                                                            <input type="radio" class="btn-check" name="typeFilter" id="type_{{ str_replace([' ', '+', '-'], '_', $type) }}" value="{{ $type }}">
+                                                                            <label class="btn btn-outline-primary btn-sm" for="type_{{ str_replace([' ', '+', '-'], '_', $type) }}">
                                                                                 {{ ucfirst(str_replace('-', ' ', $type)) }}
                                                                             </label>
                                                                         @endforeach
@@ -634,8 +634,6 @@
         const colorFilter = document.querySelector('input[name="colorFilter"]:checked').value;
         const typeFilter = document.querySelector('input[name="typeFilter"]:checked').value;
         
-        console.log('Applying filters:', { sizeFilter, colorFilter, typeFilter });
-        
         // Filter products client-side
         const filteredProducts = allProducts.filter(product => {
             let matches = true;
@@ -658,8 +656,6 @@
             return matches;
         });
         
-        console.log('Filtered products:', filteredProducts.length);
-        
         // Update the display
         updateProductDisplay(filteredProducts);
     }
@@ -681,22 +677,25 @@
                 </div>
             `;
         } else {
-            // Show all products and hide non-matching ones
+            // Get all product cards
             const productCards = productGrid.querySelectorAll('.product-card');
             
-            productCards.forEach((card, index) => {
-                if (index < products.length) {
-                    card.style.display = 'block';
-                    // Update the card data to match the filtered product
-                    const product = products[index];
-                    card.setAttribute('data-product-id', product.printful_id || product.id);
-                    card.setAttribute('data-variant-id', product.variant_id || product.id);
-                    card.setAttribute('data-type', product.type);
-                    card.setAttribute('data-sizes', JSON.stringify(product.sizes || []));
-                    card.setAttribute('data-colors', JSON.stringify(product.colors || []));
-                    card.setAttribute('data-price', product.base_price);
-                } else {
-                    card.style.display = 'none';
+            // Create a map of product IDs to their corresponding cards
+            const productCardMap = new Map();
+            productCards.forEach(card => {
+                const productId = card.dataset.productId;
+                productCardMap.set(productId, card);
+            });
+            
+            // Show/hide cards based on filtered products
+            productCards.forEach(card => {
+                card.style.display = 'none'; // Hide all cards first
+            });
+            
+            products.forEach(product => {
+                const card = productCardMap.get(product.id);
+                if (card) {
+                    card.style.display = 'block'; // Show matching cards
                 }
             });
         }
@@ -803,7 +802,6 @@
         }
         
         // Add event listeners to existing cards
-        const productCards = document.querySelectorAll('.product-card');
         console.log('Found', productCards.length, 'product cards');
         
         productCards.forEach((card, index) => {
