@@ -202,6 +202,19 @@
                                                 @endforelse
                                             </div>
                                             
+                                            <!-- No Products Alert -->
+                                            <div class="row" id="noProductsAlert" style="display: none;">
+                                                <div class="col-12">
+                                                    <div class="alert alert-info text-center">
+                                                        <i class="bi bi-info-circle me-2"></i>
+                                                        No products match your current filters. 
+                                                        <button type="button" class="btn btn-outline-primary btn-sm ms-2" onclick="clearFilters()">
+                                                            Clear Filters
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
                                             <!-- Load More Products -->
                                             <div class="row mt-4" id="loadMoreSection" style="display: none;">
                                                 <div class="col-12 text-center">
@@ -679,54 +692,38 @@
     function updateProductDisplay(products) {
         const productGrid = document.getElementById('productGrid');
         const productCount = document.getElementById('productCount');
-        
-        console.log('updateProductDisplay called with', products.length, 'products');
+        const noProductsAlert = document.getElementById('noProductsAlert');
         
         if (products.length === 0) {
-            productGrid.innerHTML = `
-                <div class="col-12">
-                    <div class="alert alert-info text-center">
-                        <i class="bi bi-info-circle me-2"></i>
-                        No products match your current filters. 
-                        <button type="button" class="btn btn-outline-primary btn-sm ms-2" onclick="clearFilters()">
-                            Clear Filters
-                        </button>
-                    </div>
-                </div>
-            `;
+            // Hide all product cards
+            const productCards = productGrid.querySelectorAll('.product-card');
+            productCards.forEach(card => {
+                card.style.display = 'none';
+            });
+            // Show the alert
+            if (noProductsAlert) noProductsAlert.style.display = 'block';
         } else {
             // Get all product cards
             const productCards = productGrid.querySelectorAll('.product-card');
-            console.log('Found', productCards.length, 'product cards in DOM');
-            
             // Create a map of product IDs to their corresponding cards
             const productCardMap = new Map();
             productCards.forEach(card => {
                 const productId = card.dataset.productId;
                 productCardMap.set(productId, card);
             });
-            
-            console.log('Product card map keys:', Array.from(productCardMap.keys()));
-            console.log('Products to show:', products.map(p => p.id));
-            
             // Show/hide cards based on filtered products
             productCards.forEach(card => {
                 card.style.display = 'none'; // Hide all cards first
             });
-            
-            let shownCount = 0;
             products.forEach(product => {
                 // Try both string and number versions of the ID
                 const card = productCardMap.get(product.id.toString()) || productCardMap.get(product.id);
                 if (card) {
                     card.style.display = 'block'; // Show matching cards
-                    shownCount++;
-                } else {
-                    console.log('Card not found for product ID:', product.id);
                 }
             });
-            
-            console.log('Showed', shownCount, 'cards');
+            // Hide the alert
+            if (noProductsAlert) noProductsAlert.style.display = 'none';
         }
         
         // Update product count
@@ -746,8 +743,6 @@
         document.querySelectorAll('input[name="typeFilter"]').forEach(radio => {
             if (radio.value === '') radio.checked = true;
         });
-        
-        console.log('Clearing filters, showing all products:', allProducts.length);
         
         // Show all products
         updateProductDisplay(allProducts);

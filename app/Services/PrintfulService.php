@@ -555,17 +555,25 @@ class PrintfulService
         // Known working products by location
         $locationBasedProducts = [
             'US' => [
-                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas
-                '37' => [1984, 1985, 1982], // Gildan Lightweight
-                '679' => [17008, 17009, 17080], // Performance Crew Neck
+                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas (Unisex)
+                '37' => [1984, 1985, 1982], // Gildan Lightweight (Unisex)
+                '679' => [17008, 17009, 17080], // Performance Crew Neck (Unisex)
+                '261' => [8889, 8887, 8886], // Women's Crew Neck T-Shirt
+                '329' => [9964, 9965, 9962], // Women's Athletic T-Shirt
+                '257' => [8855, 8853, 8852], // Men's Crew Neck T-Shirt
+                '328' => [9957, 9958, 9955], // Men's Athletic T-Shirt
             ],
             'GB' => [
-                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas
-                '37' => [1984, 1985, 1982], // Gildan Lightweight
+                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas (Unisex)
+                '37' => [1984, 1985, 1982], // Gildan Lightweight (Unisex)
+                '261' => [8889, 8887, 8886], // Women's Crew Neck T-Shirt
+                '257' => [8855, 8853, 8852], // Men's Crew Neck T-Shirt
             ],
             'JP' => [
-                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas
-                '37' => [1984, 1985, 1982], // Gildan Lightweight
+                '71' => [4012, 4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020], // Bella + Canvas (Unisex)
+                '37' => [1984, 1985, 1982], // Gildan Lightweight (Unisex)
+                '261' => [8889, 8887, 8886], // Women's Crew Neck T-Shirt
+                '257' => [8855, 8853, 8852], // Men's Crew Neck T-Shirt
             ],
             'CA' => [
                 // Limited options for Canada
@@ -588,6 +596,9 @@ class PrintfulService
                 ];
             }
         }
+        
+        // Shuffle the variants to get a more balanced mix
+        shuffle($allVariants);
 
         // Apply pagination
         $paginatedVariants = array_slice($allVariants, $offset, $limit);
@@ -597,12 +608,22 @@ class PrintfulService
             try {
                 $variant = $this->getVariant($variantInfo['variant_id']);
                 if ($variant) {
+                    // Determine product type based on product ID
+                    $productType = 'T-shirt';
+                    if (in_array($variant['product_id'], [261, 329])) {
+                        $productType = "Women's T-shirt";
+                    } elseif (in_array($variant['product_id'], [257, 328])) {
+                        $productType = "Men's T-shirt";
+                    } else {
+                        $productType = 'Unisex T-shirt';
+                    }
+                    
                     $product = [
                         'id' => $variantInfo['variant_id'], // Use variant ID as unique identifier
                         'printful_id' => $variant['product_id'],
                         'variant_id' => $variantInfo['variant_id'],
                         'name' => $variant['display_name'],
-                        'type' => 'T-shirt',
+                        'type' => $productType,
                         'base_price' => $variant['retail_price'] ?? 15.00,
                         'image_url' => $variant['image_url'] ?? null,
                         'sizes' => [$this->getSizeFromVariantName($variant['display_name'])],
