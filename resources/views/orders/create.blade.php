@@ -654,19 +654,19 @@
         const filteredProducts = allProducts.filter(product => {
             let matches = true;
             
-            // Size filter
-            if (sizeFilter && product.sizes) {
-                matches = matches && product.sizes.includes(sizeFilter);
+            // Size filter - only apply if a specific size is selected (not "All")
+            if (sizeFilter && sizeFilter !== '') {
+                matches = matches && product.sizes && product.sizes.includes(sizeFilter);
             }
             
-            // Color filter
-            if (colorFilter && product.colors) {
-                matches = matches && product.colors.includes(colorFilter);
+            // Color filter - only apply if a specific color is selected (not "All")
+            if (colorFilter && colorFilter !== '') {
+                matches = matches && product.colors && product.colors.includes(colorFilter);
             }
             
-            // Type filter
-            if (typeFilter && product.type) {
-                matches = matches && product.type.toLowerCase() === typeFilter.toLowerCase();
+            // Type filter - only apply if a specific type is selected (not "All")
+            if (typeFilter && typeFilter !== '') {
+                matches = matches && product.type && product.type.toLowerCase() === typeFilter.toLowerCase();
             }
             
             return matches;
@@ -679,6 +679,8 @@
     function updateProductDisplay(products) {
         const productGrid = document.getElementById('productGrid');
         const productCount = document.getElementById('productCount');
+        
+        console.log('updateProductDisplay called with', products.length, 'products');
         
         if (products.length === 0) {
             productGrid.innerHTML = `
@@ -695,6 +697,7 @@
         } else {
             // Get all product cards
             const productCards = productGrid.querySelectorAll('.product-card');
+            console.log('Found', productCards.length, 'product cards in DOM');
             
             // Create a map of product IDs to their corresponding cards
             const productCardMap = new Map();
@@ -703,18 +706,27 @@
                 productCardMap.set(productId, card);
             });
             
+            console.log('Product card map keys:', Array.from(productCardMap.keys()));
+            console.log('Products to show:', products.map(p => p.id));
+            
             // Show/hide cards based on filtered products
             productCards.forEach(card => {
                 card.style.display = 'none'; // Hide all cards first
             });
             
+            let shownCount = 0;
             products.forEach(product => {
                 // Try both string and number versions of the ID
                 const card = productCardMap.get(product.id.toString()) || productCardMap.get(product.id);
                 if (card) {
                     card.style.display = 'block'; // Show matching cards
+                    shownCount++;
+                } else {
+                    console.log('Card not found for product ID:', product.id);
                 }
             });
+            
+            console.log('Showed', shownCount, 'cards');
         }
         
         // Update product count
@@ -734,6 +746,8 @@
         document.querySelectorAll('input[name="typeFilter"]').forEach(radio => {
             if (radio.value === '') radio.checked = true;
         });
+        
+        console.log('Clearing filters, showing all products:', allProducts.length);
         
         // Show all products
         updateProductDisplay(allProducts);
