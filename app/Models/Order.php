@@ -14,6 +14,7 @@ class Order extends Model
         'order_number',
         'printful_order_id',
         'stripe_payment_intent_id',
+        'stripe_session_id',
         'status',
         'subtotal',
         'tax',

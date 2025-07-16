@@ -13,7 +13,9 @@ use App\Models\Design;
 use App\Services\PrintfulService;
 use App\Services\StripeService;
 use App\Jobs\SyncPrintfulProducts;
+use App\Mail\OrderFailedNotification;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
@@ -923,11 +925,12 @@ class OrderController extends Controller
 
         \Log::info('Order found: ' . $order->id . ' (status: ' . $order->status . ')');
 
-        // Update order status to paid
+        // Update order status to paid and store session ID
         $order->update([
             'status' => 'paid',
             'paid_at' => now(),
             'stripe_payment_intent_id' => $session->payment_intent,
+            'stripe_session_id' => $sessionId,
         ]);
 
         \Log::info('Order updated to paid status');
@@ -942,14 +945,50 @@ class OrderController extends Controller
                 'printful_order_id' => $printfulOrder['id'],
                 'status' => 'processing',
             ]);
+            
+            \Log::info('=== handleSuccess completed successfully ===');
+            return redirect()->route('orders.show', $order->id)
+                           ->with('success', 'Order placed successfully! Your order number is: ' . $order->order_number);
         } else {
-            \Log::error('Printful order creation failed');
+            \Log::error('Printful order creation failed - processing refund');
+            
+            // Process refund for failed Printful order
+            $refundResult = $this->stripeService->processRefund($sessionId, $order->total);
+            
+            if ($refundResult['success']) {
+                \Log::info('Refund processed successfully for failed Printful order', [
+                    'order_id' => $order->id,
+                    'refund_id' => $refundResult['refund_id']
+                ]);
+                
+                // Update order status to cancelled
+                $order->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                    'cancellation_reason' => 'Printful order creation failed - no design image available'
+                ]);
+                
+                // Send email notification to customer
+                $this->sendOrderFailedEmail($order, 'Your order could not be processed because no design image was available for printing. A full refund has been processed.');
+                
+                return redirect()->route('orders.show', $order->id)
+                               ->with('error', 'Order cancelled and refunded. No design image was available for printing. Please create a new order with a design.');
+            } else {
+                \Log::error('Failed to process refund for failed Printful order', [
+                    'order_id' => $order->id,
+                    'refund_error' => $refundResult['message']
+                ]);
+                
+                // Update order status to indicate issue
+                $order->update([
+                    'status' => 'error',
+                    'notes' => 'Printful order failed and refund processing failed: ' . $refundResult['message']
+                ]);
+                
+                return redirect()->route('orders.show', $order->id)
+                               ->with('error', 'Order processing failed. Please contact support immediately.');
+            }
         }
-
-        \Log::info('=== handleSuccess completed ===');
-
-        return redirect()->route('orders.show', $order->id)
-                       ->with('success', 'Order placed successfully! Your order number is: ' . $order->order_number);
     }
 
     /**
@@ -1171,7 +1210,7 @@ class OrderController extends Controller
                 ], 400);
             }
 
-            // Get design if provided
+            // CRITICAL: Validate design is provided and has image
             $design = null;
             if ($request->design_id) {
                 $design = Design::find($request->design_id);
@@ -1193,8 +1232,24 @@ class OrderController extends Controller
                         'message' => 'You can only order your own designs.'
                     ], 403);
                 }
+                
+                // CRITICAL: Check if design has an image
+                if ($design && !$design->front_image_path) {
+                    \Log::warning('Order attempt with design that has no image - rejecting', [
+                        'design_id' => $design->id,
+                        'design_name' => $design->name
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The selected design does not have a printable image. Please select a different design or upload an image to your design.'
+                    ], 400);
+                }
             } else {
-                \Log::info('No design ID provided');
+                \Log::warning('Order attempt without design ID - rejecting');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A design must be selected to place an order. Please select a design and try again.'
+                ], 400);
             }
 
             // Calculate shipping and tax
@@ -1702,6 +1757,34 @@ class OrderController extends Controller
                 Log::error('OrderController: Even fallback failed: ' . $fallbackError->getMessage());
                 return collect([]);
             }
+        }
+    }
+
+    /**
+     * Send email notification for failed orders
+     */
+    private function sendOrderFailedEmail(Order $order, string $reason)
+    {
+        try {
+            \Log::info('Sending order failed email notification', [
+                'order_id' => $order->id,
+                'user_email' => $order->user->email,
+                'reason' => $reason
+            ]);
+            
+            Mail::to($order->user->email)->send(new OrderFailedNotification($order, $reason));
+            
+            \Log::info('Order failed email sent successfully', [
+                'order_id' => $order->id,
+                'user_email' => $order->user->email
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to send order failed email', [
+                'order_id' => $order->id,
+                'user_email' => $order->user->email,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }
