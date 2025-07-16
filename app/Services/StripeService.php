@@ -310,21 +310,38 @@ class StripeService
                 ];
             }
 
-            // Process the refund
-            $refund = $this->refundPayment($session->payment_intent, $amount * 100); // Convert to cents
+            // Get the payment intent to check the actual amount charged
+            $paymentIntent = \Stripe\PaymentIntent::retrieve($session->payment_intent);
+            $actualAmountCharged = $paymentIntent->amount / 100; // Convert from cents to dollars
+            
+            \Log::info('Processing refund', [
+                'session_id' => $sessionId,
+                'payment_intent' => $session->payment_intent,
+                'requested_refund_amount' => $amount,
+                'actual_amount_charged' => $actualAmountCharged,
+                'payment_intent_amount_cents' => $paymentIntent->amount
+            ]);
+
+            // Use the actual amount charged if it's different from our calculated amount
+            $refundAmount = min($amount, $actualAmountCharged);
+            
+            // Process the refund using the actual amount charged (in cents)
+            $refund = $this->refundPayment($session->payment_intent, $paymentIntent->amount);
             
             if ($refund) {
                 \Log::info('Refund processed successfully', [
                     'session_id' => $sessionId,
                     'payment_intent' => $session->payment_intent,
                     'refund_id' => $refund->id,
-                    'amount' => $amount
+                    'refunded_amount' => $actualAmountCharged,
+                    'original_requested_amount' => $amount
                 ]);
                 
                 return [
                     'success' => true,
                     'message' => 'Refund processed successfully',
-                    'refund_id' => $refund->id
+                    'refund_id' => $refund->id,
+                    'refunded_amount' => $actualAmountCharged
                 ];
             } else {
                 return [
