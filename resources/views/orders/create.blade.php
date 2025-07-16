@@ -650,27 +650,39 @@
         const colorFilter = document.querySelector('input[name="colorFilter"]:checked').value;
         const typeFilter = document.querySelector('input[name="typeFilter"]:checked').value;
         
+        console.log('Applying filters:', { sizeFilter, colorFilter, typeFilter });
+        console.log('All products count:', allProducts.length);
+        
         // Filter products client-side
         const filteredProducts = allProducts.filter(product => {
             let matches = true;
             
             // Size filter
             if (sizeFilter && product.sizes) {
-                matches = matches && product.sizes.includes(sizeFilter);
+                const sizeMatch = product.sizes.includes(sizeFilter);
+                console.log(`Product ${product.name}: size ${JSON.stringify(product.sizes)} includes ${sizeFilter}? ${sizeMatch}`);
+                matches = matches && sizeMatch;
             }
             
             // Color filter
             if (colorFilter && product.colors) {
-                matches = matches && product.colors.includes(colorFilter);
+                const colorMatch = product.colors.includes(colorFilter);
+                console.log(`Product ${product.name}: color ${JSON.stringify(product.colors)} includes ${colorFilter}? ${colorMatch}`);
+                matches = matches && colorMatch;
             }
             
             // Type filter
             if (typeFilter && product.type) {
-                matches = matches && product.type.toLowerCase() === typeFilter.toLowerCase();
+                const typeMatch = product.type.toLowerCase() === typeFilter.toLowerCase();
+                console.log(`Product ${product.name}: type ${product.type} matches ${typeFilter}? ${typeMatch}`);
+                matches = matches && typeMatch;
             }
             
+            console.log(`Product ${product.name}: final match = ${matches}`);
             return matches;
         });
+        
+        console.log('Filtered products count:', filteredProducts.length);
         
         // Update the display
         updateProductDisplay(filteredProducts);
@@ -911,18 +923,28 @@
         });
         
         console.log('Initialized allProducts:', allProducts.length, 'products');
+        console.log('Sample product data:', allProducts[0]);
         
         // Set up new filter event listeners
         document.querySelectorAll('input[name="sizeFilter"]').forEach(radio => {
-            radio.addEventListener('change', applyFilters);
+            radio.addEventListener('change', function() {
+                console.log('Size filter changed to:', this.value);
+                applyFilters();
+            });
         });
         
         document.querySelectorAll('input[name="colorFilter"]').forEach(radio => {
-            radio.addEventListener('change', applyFilters);
+            radio.addEventListener('change', function() {
+                console.log('Color filter changed to:', this.value);
+                applyFilters();
+            });
         });
         
         document.querySelectorAll('input[name="typeFilter"]').forEach(radio => {
-            radio.addEventListener('change', applyFilters);
+            radio.addEventListener('change', function() {
+                console.log('Type filter changed to:', this.value);
+                applyFilters();
+            });
         });
         
         const clearFiltersBtn = document.getElementById('clearFilters');
