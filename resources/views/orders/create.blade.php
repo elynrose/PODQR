@@ -129,7 +129,7 @@
                                             <div class="row" id="productGrid">
                                                 @forelse($products as $product)
                                                     <div class="col-md-4 mb-3 product-card" 
-                                                         data-product-id="{{ is_array($product) ? (is_string($product['printful_id']) ? $product['printful_id'] : (is_numeric($product['printful_id']) ? $product['printful_id'] : '')) : $product->id }}"
+                                                         data-product-id="{{ is_array($product) ? (is_string($product['id']) ? $product['id'] : (is_numeric($product['id']) ? $product['id'] : '')) : $product->id }}"
                                                          data-variant-id="{{ is_array($product) ? (is_string($product['variant_id']) ? $product['variant_id'] : (is_numeric($product['variant_id']) ? $product['variant_id'] : '')) : ($product->variant_id ?? '') }}"
                                                          data-type="{{ is_array($product) ? (is_string($product['type']) ? $product['type'] : 'T-SHIRT') : $product->type }}"
                                                          data-sizes="{{ is_array($product) ? json_encode($product['sizes']) : json_encode($product->sizes) }}"
@@ -200,6 +200,19 @@
                                                         </div>
                                                     </div>
                                                 @endforelse
+                                            </div>
+                                            
+                                            <!-- Load More Products -->
+                                            <div class="row mt-4" id="loadMoreSection" style="display: none;">
+                                                <div class="col-12 text-center">
+                                                    <button type="button" class="btn btn-outline-primary" id="loadMoreBtn">
+                                                        <i class="bi bi-arrow-down-circle me-2"></i>
+                                                        Load More Products
+                                                    </button>
+                                                    <div class="mt-2">
+                                                        <small class="text-muted" id="loadMoreStatus"></small>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -628,6 +641,9 @@
 
     // Store all products for client-side filtering
     let allProducts = [];
+    let currentOffset = {{ count($products) }};
+    let isLoadingMore = false;
+    let hasMoreProducts = true;
     
     function applyFilters() {
         const sizeFilter = document.querySelector('input[name="sizeFilter"]:checked').value;
@@ -725,8 +741,154 @@
     function updateProductCount(count) {
         const productCount = document.getElementById('productCount');
         if (productCount) {
-            productCount.textContent = `Showing ${count} products`;
+            productCount.innerHTML = `<i class="bi bi-grid me-1"></i>Showing ${count} products`;
         }
+    }
+    
+    function loadMoreProducts() {
+        if (isLoadingMore || !hasMoreProducts) return;
+        
+        isLoadingMore = true;
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        const loadMoreStatus = document.getElementById('loadMoreStatus');
+        
+        // Update button state
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Loading...';
+        loadMoreStatus.textContent = 'Fetching more products...';
+        
+        // Make AJAX request
+        fetch('{{ route("orders.load-more-products") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify({
+                offset: currentOffset,
+                limit: 6,
+                design_id: document.getElementById('designSelect')?.value || null,
+                location: '{{ $userLocation ?? "US" }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.products.length > 0) {
+                // Add new products to allProducts array
+                data.products.forEach(product => {
+                    allProducts.push({
+                        id: product.id,
+                        variant_id: product.variant_id,
+                        type: product.type,
+                        sizes: product.sizes || [],
+                        colors: product.colors || [],
+                        base_price: parseFloat(product.base_price || 0),
+                        name: product.name,
+                        image_url: product.image_url
+                    });
+                });
+                
+                // Add new products to the grid
+                const productGrid = document.getElementById('productGrid');
+                data.products.forEach(product => {
+                    const productCard = createProductCard(product);
+                    productGrid.appendChild(productCard);
+                });
+                
+                // Update offset and check if more products are available
+                currentOffset = data.offset;
+                hasMoreProducts = data.has_more;
+                
+                // Update product count
+                updateProductCount(allProducts.length);
+                
+                // Show/hide load more section
+                const loadMoreSection = document.getElementById('loadMoreSection');
+                if (hasMoreProducts) {
+                    loadMoreSection.style.display = 'block';
+                    loadMoreStatus.textContent = `Loaded ${data.products.length} more products`;
+                } else {
+                    loadMoreSection.style.display = 'none';
+                    loadMoreStatus.textContent = 'All products loaded';
+                }
+                
+                // Re-apply current filters to new products
+                applyFilters();
+                
+            } else {
+                hasMoreProducts = false;
+                loadMoreStatus.textContent = 'No more products available';
+                document.getElementById('loadMoreSection').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading more products:', error);
+            loadMoreStatus.textContent = 'Error loading products. Please try again.';
+        })
+        .finally(() => {
+            isLoadingMore = false;
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i class="bi bi-arrow-down-circle me-2"></i>Load More Products';
+        });
+    }
+    
+    function createProductCard(product) {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-3 product-card';
+        col.setAttribute('data-product-id', product.id);
+        col.setAttribute('data-variant-id', product.variant_id);
+        col.setAttribute('data-type', product.type);
+        col.setAttribute('data-sizes', JSON.stringify(product.sizes));
+        col.setAttribute('data-colors', JSON.stringify(product.colors));
+        col.setAttribute('data-price', product.base_price);
+        
+        const imageUrl = product.image_url || '';
+        const imageHtml = imageUrl ? 
+            `<img src="${imageUrl}" alt="${product.name}" class="img-fluid" style="max-height: 150px; object-fit: contain;">` :
+            `<div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
+            </div>`;
+        
+        const sizesOptions = product.sizes.map(size => `<option value="${size}">${size}</option>`).join('');
+        
+        col.innerHTML = `
+            <div class="card h-100 product-card-inner">
+                <div class="card-body d-flex flex-column">
+                    <div class="text-center mb-3">
+                        ${imageHtml}
+                    </div>
+                    <h6 class="card-title">${product.name}</h6>
+                    <p class="card-text text-muted small">${product.type}</p>
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-primary">$${product.base_price.toFixed(2)}</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm select-product">
+                                Select
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            ${product.sizes.length > 0 ? `
+                                <select class="form-select form-select-sm size-select mb-2" disabled>
+                                    <option value="">Select Size</option>
+                                    ${sizesOptions}
+                                </select>
+                            ` : ''}
+                            
+                            <div class="input-group input-group-sm">
+                                <label class="input-group-text">Qty</label>
+                                <input type="number" min="1" value="1" class="form-control quantity-input" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners to the new card
+        addProductCardEventListeners(col);
+        
+        return col;
     }
 
     // Initialize when DOM is loaded
@@ -765,6 +927,17 @@
         
         const clearFiltersBtn = document.getElementById('clearFilters');
         if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearFilters);
+        
+        // Set up load more button
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', loadMoreProducts);
+            
+            // Show load more section if we have products and there might be more
+            if (allProducts.length > 0 && allProducts.length >= 15) {
+                document.getElementById('loadMoreSection').style.display = 'block';
+            }
+        }
         
         // Design selection handler
         const designSelect = document.getElementById('designSelect');

@@ -133,7 +133,7 @@ class OrderController extends Controller
             \Log::info('OrderController: About to fetch T-shirt products from Printful API');
             
             // Get location-compatible products with pagination (optimized for performance)
-            $products = $this->printfulService->getLocationCompatibleProducts($userLocation, 10, 0);
+            $products = $this->printfulService->getLocationCompatibleProducts($userLocation, 15, 0);
 
             // Debug: Log after API call
             \Log::info('OrderController: Printful API response', [
