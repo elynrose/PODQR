@@ -43,50 +43,85 @@
                                             <h5 class="mb-0">Select Products</h5>
                                         </div>
                                         <div class="card-body">
-                                            <!-- Filters -->
+                                            <!-- Redesigned Filters -->
                                             <div class="row mb-4">
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Type</label>
-                                                    <select class="form-select form-select-sm" id="typeFilter">
-                                                        <option value="">All Types</option>
-                                                        @foreach($types as $type)
-                                                            <option value="{{ is_string($type) ? $type : 'T-SHIRT' }}">{{ is_string($type) ? ucfirst(str_replace('-', ' ', $type)) : 'T-Shirt' }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Size</label>
-                                                    <select class="form-select form-select-sm" id="sizeFilter">
-                                                        <option value="">All Sizes</option>
-                                                        @foreach($sizes as $size)
-                                                            <option value="{{ is_string($size) ? $size : 'M' }}">{{ is_string($size) ? $size : 'M' }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Color</label>
-                                                    <select class="form-select form-select-sm" id="colorFilter">
-                                                        <option value="">All Colors</option>
-                                                        @foreach($colors as $color)
-                                                            <option value="{{ is_string($color) ? $color : 'White' }}">{{ is_string($color) ? $color : 'White' }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Shipping Location</label>
-                                                    <select id="locationFilter" class="form-select" disabled>
-                                                        <option value="US" selected>United States</option>
-                                                    </select>
-                                                    <small class="text-muted">Currently shipping to USA only - unisex t-shirts</small>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="row mb-3">
-                                                <div class="col">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
-                                                        <i class="bi bi-x-circle"></i> Clear Filters
-                                                    </button>
-                                                    <span class="ms-3 text-muted" id="productCount">Showing all products</span>
+                                                <div class="col-12">
+                                                    <div class="card">
+                                                        <div class="card-body">
+                                                            <h6 class="card-title mb-3">
+                                                                <i class="bi bi-funnel me-2"></i>
+                                                                Filter Products
+                                                            </h6>
+                                                            
+                                                            <div class="row g-3">
+                                                                <!-- Size Filter -->
+                                                                <div class="col-md-4">
+                                                                    <label class="form-label fw-bold">Size</label>
+                                                                    <div class="btn-group-vertical w-100" role="group" id="sizeFilterGroup">
+                                                                        <input type="radio" class="btn-check" name="sizeFilter" id="sizeAll" value="" checked>
+                                                                        <label class="btn btn-outline-primary btn-sm" for="sizeAll">
+                                                                            <i class="bi bi-check-circle me-1"></i>All Sizes
+                                                                        </label>
+                                                                        
+                                                                        @foreach($sizes as $size)
+                                                                            <input type="radio" class="btn-check" name="sizeFilter" id="size{{ $size }}" value="{{ $size }}">
+                                                                            <label class="btn btn-outline-primary btn-sm" for="size{{ $size }}">
+                                                                                {{ $size }}
+                                                                            </label>
+                                                                        @endforeach
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <!-- Color Filter -->
+                                                                <div class="col-md-4">
+                                                                    <label class="form-label fw-bold">Color</label>
+                                                                    <div class="btn-group-vertical w-100" role="group" id="colorFilterGroup">
+                                                                        <input type="radio" class="btn-check" name="colorFilter" id="colorAll" value="" checked>
+                                                                        <label class="btn btn-outline-primary btn-sm" for="colorAll">
+                                                                            <i class="bi bi-check-circle me-1"></i>All Colors
+                                                                        </label>
+                                                                        
+                                                                        @foreach($colors as $color)
+                                                                            <input type="radio" class="btn-check" name="colorFilter" id="color{{ $color }}" value="{{ $color }}">
+                                                                            <label class="btn btn-outline-primary btn-sm" for="color{{ $color }}">
+                                                                                <span class="d-inline-block me-2" style="width: 12px; height: 12px; background-color: {{ $color == 'White' ? '#ffffff' : ($color == 'Black' ? '#000000' : ($color == 'Navy' ? '#000080' : '#cccccc')) }}; border: 1px solid #ddd; border-radius: 2px;"></span>
+                                                                                {{ $color }}
+                                                                            </label>
+                                                                        @endforeach
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <!-- Type Filter -->
+                                                                <div class="col-md-4">
+                                                                    <label class="form-label fw-bold">Type</label>
+                                                                    <div class="btn-group-vertical w-100" role="group" id="typeFilterGroup">
+                                                                        <input type="radio" class="btn-check" name="typeFilter" id="typeAll" value="" checked>
+                                                                        <label class="btn btn-outline-primary btn-sm" for="typeAll">
+                                                                            <i class="bi bi-check-circle me-1"></i>All Types
+                                                                        </label>
+                                                                        
+                                                                        @foreach($types as $type)
+                                                                            <input type="radio" class="btn-check" name="typeFilter" id="type{{ $type }}" value="{{ $type }}">
+                                                                            <label class="btn btn-outline-primary btn-sm" for="type{{ $type }}">
+                                                                                {{ ucfirst(str_replace('-', ' ', $type)) }}
+                                                                            </label>
+                                                                        @endforeach
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div class="row mt-3">
+                                                                <div class="col-12">
+                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
+                                                                        <i class="bi bi-x-circle me-1"></i>Clear All Filters
+                                                                    </button>
+                                                                    <span class="ms-3 text-muted" id="productCount">
+                                                                        <i class="bi bi-grid me-1"></i>Showing {{ count($products) }} products
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -591,144 +626,101 @@
         submitButton.disabled = false;
     }
 
+    // Store all products for client-side filtering
+    let allProducts = [];
+    
     function applyFilters() {
-        const typeFilter = document.getElementById('typeFilter').value;
-        const sizeFilter = document.getElementById('sizeFilter').value;
-        const colorFilter = document.getElementById('colorFilter').value;
-        const locationFilter = document.getElementById('locationFilter').value;
+        const sizeFilter = document.querySelector('input[name="sizeFilter"]:checked').value;
+        const colorFilter = document.querySelector('input[name="colorFilter"]:checked').value;
+        const typeFilter = document.querySelector('input[name="typeFilter"]:checked').value;
         
-        // Update current filters
-        currentFilters = {
-            type: typeFilter,
-            size: sizeFilter,
-            color: colorFilter,
-            location: locationFilter
-        };
+        console.log('Applying filters:', { sizeFilter, colorFilter, typeFilter });
         
-        // Reload products with new filters via AJAX
-        loadFilteredProducts();
-    }
-
-    function loadFilteredProducts() {
-        const params = new URLSearchParams();
-        
-        // Add filters to params
-        if (currentFilters.type) params.append('type', currentFilters.type);
-        if (currentFilters.size) params.append('size', currentFilters.size);
-        if (currentFilters.color) params.append('color', currentFilters.color);
-        if (currentFilters.location) params.append('location', currentFilters.location);
-        
-        // Add design ID if available
-        const designSelect = document.getElementById('designSelect');
-        if (designSelect && designSelect.value) {
-            params.append('design_id', designSelect.value);
-        }
-        
-        // Show loading state
-        const productGrid = document.getElementById('productGrid');
-        productGrid.innerHTML = '<div class="col-12 text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        
-        // Fetch filtered products
-        fetch(`/api/products?${params.toString()}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.products && data.products.length > 0) {
-                    renderProducts(data.products);
-                    updateProductCount(data.products.length);
-                } else {
-                    productGrid.innerHTML = '<div class="col-12"><div class="alert alert-info text-center"><i class="bi bi-info-circle me-2"></i>No products match your current filters. Please try adjusting your selection.</div></div>';
-                    updateProductCount(0);
-                }
-            })
-            .catch(error => {
-                console.error('Error loading products:', error);
-                productGrid.innerHTML = '<div class="col-12"><div class="alert alert-danger text-center"><i class="bi bi-exclamation-triangle me-2"></i>Error loading products. Please try again.</div></div>';
-                updateProductCount(0);
-            });
-    }
-
-    function renderProducts(products) {
-        const productGrid = document.getElementById('productGrid');
-        productGrid.innerHTML = '';
-        
-        products.forEach(product => {
-            const productCard = createProductCard(product);
-            productGrid.appendChild(productCard);
+        // Filter products client-side
+        const filteredProducts = allProducts.filter(product => {
+            let matches = true;
+            
+            // Size filter
+            if (sizeFilter && product.sizes) {
+                matches = matches && product.sizes.includes(sizeFilter);
+            }
+            
+            // Color filter
+            if (colorFilter && product.colors) {
+                matches = matches && product.colors.includes(colorFilter);
+            }
+            
+            // Type filter
+            if (typeFilter && product.type) {
+                matches = matches && product.type.toLowerCase() === typeFilter.toLowerCase();
+            }
+            
+            return matches;
         });
         
-        // Add event listeners to new cards
-        const newCards = productGrid.querySelectorAll('.product-card');
-        newCards.forEach(card => {
-            addProductCardEventListeners(card);
-        });
+        console.log('Filtered products:', filteredProducts.length);
+        
+        // Update the display
+        updateProductDisplay(filteredProducts);
     }
-
-    function createProductCard(product) {
-        const card = document.createElement('div');
-        card.className = 'col-md-4 mb-3 product-card';
-        card.setAttribute('data-product-id', product.id);
-        card.setAttribute('data-variant-id', product.variant_id || product.id); // Add variant ID
-        card.setAttribute('data-type', product.type);
-        card.setAttribute('data-sizes', JSON.stringify(product.sizes || []));
-        card.setAttribute('data-colors', JSON.stringify(product.colors || []));
-        card.setAttribute('data-price', product.base_price);
+    
+    function updateProductDisplay(products) {
+        const productGrid = document.getElementById('productGrid');
+        const productCount = document.getElementById('productCount');
         
-        const sizes = product.sizes || [];
-        const sizeOptions = sizes.map(size => `<option value="${size}">${size}</option>`).join('');
-        
-        card.innerHTML = `
-            <div class="card h-100 product-card-inner">
-                <div class="card-body d-flex flex-column">
-                    <div class="text-center mb-3">
-                        ${product.image_url ? 
-                            `<img src="${product.image_url}" alt="${product.name}" class="img-fluid" style="max-height: 150px; object-fit: contain;">` :
-                            `<div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="height: 150px;"><i class="bi bi-image text-white" style="font-size: 3rem;"></i></div>`
-                        }
-                    </div>
-                    <h6 class="card-title">${product.name}</h6>
-                    <p class="card-text text-muted small">${product.type}</p>
-                    <div class="mt-auto">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold text-primary">$${parseFloat(product.base_price).toFixed(2)}</span>
-                            <button type="button" class="btn btn-outline-primary btn-sm select-product">Select</button>
-                        </div>
-                        
-                        <div class="mt-3">
-                            ${sizes.length > 0 ? `
-                                <select class="form-select form-select-sm size-select mb-2" disabled>
-                                    <option value="">Select Size</option>
-                                    ${sizeOptions}
-                                </select>
-                            ` : ''}
-                            
-                            <div class="input-group input-group-sm">
-                                <label class="input-group-text">Qty</label>
-                                <input type="number" min="1" value="1" class="form-control quantity-input" disabled>
-                            </div>
-                        </div>
+        if (products.length === 0) {
+            productGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No products match your current filters. 
+                        <button type="button" class="btn btn-outline-primary btn-sm ms-2" onclick="clearFilters()">
+                            Clear Filters
+                        </button>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            // Show all products and hide non-matching ones
+            const productCards = productGrid.querySelectorAll('.product-card');
+            
+            productCards.forEach((card, index) => {
+                if (index < products.length) {
+                    card.style.display = 'block';
+                    // Update the card data to match the filtered product
+                    const product = products[index];
+                    card.setAttribute('data-product-id', product.printful_id || product.id);
+                    card.setAttribute('data-variant-id', product.variant_id || product.id);
+                    card.setAttribute('data-type', product.type);
+                    card.setAttribute('data-sizes', JSON.stringify(product.sizes || []));
+                    card.setAttribute('data-colors', JSON.stringify(product.colors || []));
+                    card.setAttribute('data-price', product.base_price);
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
         
-        return card;
+        // Update product count
+        if (productCount) {
+            productCount.innerHTML = `<i class="bi bi-grid me-1"></i>Showing ${products.length} products`;
+        }
     }
 
     function clearFilters() {
-        const typeFilter = document.getElementById('typeFilter');
-        const sizeFilter = document.getElementById('sizeFilter');
-        const colorFilter = document.getElementById('colorFilter');
-        const locationFilter = document.getElementById('locationFilter');
+        // Reset all radio buttons to "All"
+        document.querySelectorAll('input[name="sizeFilter"]').forEach(radio => {
+            if (radio.value === '') radio.checked = true;
+        });
+        document.querySelectorAll('input[name="colorFilter"]').forEach(radio => {
+            if (radio.value === '') radio.checked = true;
+        });
+        document.querySelectorAll('input[name="typeFilter"]').forEach(radio => {
+            if (radio.value === '') radio.checked = true;
+        });
         
-        if (typeFilter) typeFilter.value = '';
-        if (sizeFilter) sizeFilter.value = '';
-        if (colorFilter) colorFilter.value = '';
-        if (locationFilter) locationFilter.value = 'US'; // Reset to US default
-        
-        currentFilters = {};
-        
-        // Reload products without filters
-        loadFilteredProducts();
+        // Show all products
+        updateProductDisplay(allProducts);
     }
 
     function updateProductCount(count) {
@@ -742,17 +734,37 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM loaded, initializing order page...');
         
-        // Filter change handlers (only if elements exist)
-        const typeFilter = document.getElementById('typeFilter');
-        const sizeFilter = document.getElementById('sizeFilter');
-        const colorFilter = document.getElementById('colorFilter');
-        const locationFilter = document.getElementById('locationFilter');
-        const clearFiltersBtn = document.getElementById('clearFilters');
+        // Initialize allProducts array with current products
+        const productCards = document.querySelectorAll('.product-card');
+        allProducts = Array.from(productCards).map(card => {
+            return {
+                id: card.dataset.productId,
+                variant_id: card.dataset.variantId,
+                type: card.dataset.type,
+                sizes: JSON.parse(card.dataset.sizes || '[]'),
+                colors: JSON.parse(card.dataset.colors || '[]'),
+                base_price: parseFloat(card.dataset.price || 0),
+                name: card.querySelector('.card-title').textContent,
+                image_url: card.querySelector('img')?.src || null
+            };
+        });
         
-        if (typeFilter) typeFilter.addEventListener('change', applyFilters);
-        if (sizeFilter) sizeFilter.addEventListener('change', applyFilters);
-        if (colorFilter) colorFilter.addEventListener('change', applyFilters);
-        if (locationFilter) locationFilter.addEventListener('change', applyFilters);
+        console.log('Initialized allProducts:', allProducts.length, 'products');
+        
+        // Set up new filter event listeners
+        document.querySelectorAll('input[name="sizeFilter"]').forEach(radio => {
+            radio.addEventListener('change', applyFilters);
+        });
+        
+        document.querySelectorAll('input[name="colorFilter"]').forEach(radio => {
+            radio.addEventListener('change', applyFilters);
+        });
+        
+        document.querySelectorAll('input[name="typeFilter"]').forEach(radio => {
+            radio.addEventListener('change', applyFilters);
+        });
+        
+        const clearFiltersBtn = document.getElementById('clearFilters');
         if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearFilters);
         
         // Design selection handler
