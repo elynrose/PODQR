@@ -43,6 +43,41 @@
                                             <h5 class="mb-0">Select Products</h5>
                                         </div>
                                         <div class="card-body">
+                                            <!-- Location Selection -->
+                                            <div class="row mb-4">
+                                                <div class="col-12">
+                                                    <div class="card border-primary">
+                                                        <div class="card-header bg-primary text-white">
+                                                            <h6 class="card-title mb-0">
+                                                                <i class="bi bi-geo-alt me-2"></i>
+                                                                Shipping Location
+                                                            </h6>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <div class="row align-items-center">
+                                                                <div class="col-md-6">
+                                                                    <label class="form-label fw-bold">Select your shipping location:</label>
+                                                                    <select class="form-select" id="locationSelect" name="location">
+                                                                        <option value="US" {{ $userLocation == 'US' ? 'selected' : '' }}>🇺🇸 United States</option>
+                                                                        <option value="CA" {{ $userLocation == 'CA' ? 'selected' : '' }}>🇨🇦 Canada</option>
+                                                                        <option value="GB" {{ $userLocation == 'GB' ? 'selected' : '' }}>🇬🇧 United Kingdom</option>
+                                                                        <option value="AU" {{ $userLocation == 'AU' ? 'selected' : '' }}>🇦🇺 Australia</option>
+                                                                        <option value="JP" {{ $userLocation == 'JP' ? 'selected' : '' }}>🇯🇵 Japan</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <div class="alert alert-info mb-0">
+                                                                        <i class="bi bi-info-circle me-2"></i>
+                                                                        <strong>Regional Compatibility:</strong> Products shown are compatible with your selected location. 
+                                                                        <span id="locationInfo">Some products may have regional restrictions.</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <!-- Redesigned Filters -->
                                             <div class="row mb-4">
                                                 <div class="col-12">
@@ -901,6 +936,237 @@
         return col;
     }
 
+    // Function to change location and reload products
+    function changeLocation(newLocation) {
+        console.log('Changing location to:', newLocation);
+        
+        // Show loading state
+        const locationSelect = document.getElementById('locationSelect');
+        const originalValue = locationSelect.value;
+        locationSelect.disabled = true;
+        
+        // Show loading indicator
+        const locationInfo = document.getElementById('locationInfo');
+        const originalInfo = locationInfo.textContent;
+        locationInfo.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Loading products for your location...';
+        
+        // Clear current selection
+        selectedProducts.clear();
+        updateOrderSummary();
+        
+        // Prepare request data
+        const formData = new FormData();
+        formData.append('location', newLocation);
+        formData.append('design_id', '{{ $design->id ?? "" }}');
+        formData.append('_token', document.querySelector('input[name="_token"]').value);
+        
+        // Make API call to change location
+        fetch('{{ route("api.change-location") }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Location change successful:', data);
+                
+                // Update products
+                allProducts = data.products;
+                
+                // Update product grid
+                updateProductGrid(data.products);
+                
+                // Update filter options
+                updateFilterOptions(data.types, data.sizes, data.colors);
+                
+                // Update location info
+                locationInfo.textContent = data.location_info;
+                
+                // Update product count
+                const productCount = document.getElementById('productCount');
+                if (productCount) {
+                    productCount.innerHTML = `<i class="bi bi-grid me-1"></i>Showing ${data.products.length} products`;
+                }
+                
+                // Clear filters
+                clearFilters();
+                
+                console.log('Location change completed successfully');
+            } else {
+                console.error('Location change failed:', data.error);
+                alert('Failed to change location. Please try again.');
+                
+                // Revert location select
+                locationSelect.value = originalValue;
+                locationInfo.textContent = originalInfo;
+            }
+        })
+        .catch(error => {
+            console.error('Error changing location:', error);
+            alert('An error occurred while changing location. Please try again.');
+            
+            // Revert location select
+            locationSelect.value = originalValue;
+            locationInfo.textContent = originalInfo;
+        })
+        .finally(() => {
+            // Re-enable location select
+            locationSelect.disabled = false;
+        });
+    }
+    
+    // Function to update product grid
+    function updateProductGrid(products) {
+        const productGrid = document.getElementById('productGrid');
+        if (!productGrid) return;
+        
+        // Clear existing products
+        productGrid.innerHTML = '';
+        
+        if (products.length === 0) {
+            productGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No products are currently available for your selected location. Please try a different location.
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Add new products
+        products.forEach(product => {
+            const productCard = createProductCard(product);
+            productGrid.appendChild(productCard);
+        });
+    }
+    
+    // Function to update filter options
+    function updateFilterOptions(types, sizes, colors) {
+        // Update type filter
+        const typeFilterGroup = document.getElementById('typeFilterGroup');
+        if (typeFilterGroup) {
+            // Clear existing options except "All"
+            const allTypeRadio = typeFilterGroup.querySelector('#typeAll');
+            typeFilterGroup.innerHTML = '';
+            if (allTypeRadio) {
+                typeFilterGroup.appendChild(allTypeRadio);
+            }
+            
+            // Add new type options
+            types.forEach(type => {
+                const radioId = `type_${type.replace(/[ +-]/g, '_')}`;
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.className = 'btn-check';
+                radio.name = 'typeFilter';
+                radio.id = radioId;
+                radio.value = type;
+                
+                const label = document.createElement('label');
+                label.className = 'btn btn-outline-primary btn-sm';
+                label.htmlFor = radioId;
+                label.textContent = type.replace('-', ' ');
+                
+                typeFilterGroup.appendChild(radio);
+                typeFilterGroup.appendChild(label);
+                
+                // Add event listener
+                radio.addEventListener('change', applyFilters);
+            });
+        }
+        
+        // Update size filter
+        const sizeFilterGroup = document.getElementById('sizeFilterGroup');
+        if (sizeFilterGroup) {
+            // Clear existing options except "All"
+            const allSizeRadio = sizeFilterGroup.querySelector('#sizeAll');
+            sizeFilterGroup.innerHTML = '';
+            if (allSizeRadio) {
+                sizeFilterGroup.appendChild(allSizeRadio);
+            }
+            
+            // Add new size options
+            sizes.forEach(size => {
+                const radioId = `size_${size.replace(/[ +-]/g, '_')}`;
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.className = 'btn-check';
+                radio.name = 'sizeFilter';
+                radio.id = radioId;
+                radio.value = size;
+                
+                const label = document.createElement('label');
+                label.className = 'btn btn-outline-primary btn-sm';
+                label.htmlFor = radioId;
+                label.textContent = size;
+                
+                sizeFilterGroup.appendChild(radio);
+                sizeFilterGroup.appendChild(label);
+                
+                // Add event listener
+                radio.addEventListener('change', applyFilters);
+            });
+        }
+        
+        // Update color filter
+        const colorFilterGroup = document.getElementById('colorFilterGroup');
+        if (colorFilterGroup) {
+            // Clear existing options except "All"
+            const allColorRadio = colorFilterGroup.querySelector('#colorAll');
+            colorFilterGroup.innerHTML = '';
+            if (allColorRadio) {
+                colorFilterGroup.appendChild(allColorRadio);
+            }
+            
+            // Add new color options
+            colors.forEach(color => {
+                const radioId = `color_${color.replace(/[ +-]/g, '_')}`;
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.className = 'btn-check';
+                radio.name = 'colorFilter';
+                radio.id = radioId;
+                radio.value = color;
+                
+                const label = document.createElement('label');
+                label.className = 'btn btn-outline-primary btn-sm';
+                label.htmlFor = radioId;
+                
+                const colorIndicator = document.createElement('span');
+                colorIndicator.className = 'd-inline-block me-2';
+                colorIndicator.style.cssText = `width: 12px; height: 12px; background-color: ${getColorCode(color)}; border: 1px solid #ddd; border-radius: 2px;`;
+                
+                label.appendChild(colorIndicator);
+                label.appendChild(document.createTextNode(color));
+                
+                colorFilterGroup.appendChild(radio);
+                colorFilterGroup.appendChild(label);
+                
+                // Add event listener
+                radio.addEventListener('change', applyFilters);
+            });
+        }
+    }
+    
+    // Helper function to get color code
+    function getColorCode(color) {
+        const colorMap = {
+            'White': '#ffffff',
+            'Black': '#000000',
+            'Navy': '#000080',
+            'Gray': '#808080',
+            'Red': '#ff0000',
+            'Blue': '#0000ff',
+            'Green': '#008000'
+        };
+        return colorMap[color] || '#cccccc';
+    }
+
     // Initialize when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM loaded, initializing order page...');
@@ -937,6 +1203,16 @@
         
         const clearFiltersBtn = document.getElementById('clearFilters');
         if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearFilters);
+        
+        // Set up location change handler
+        const locationSelect = document.getElementById('locationSelect');
+        if (locationSelect) {
+            locationSelect.addEventListener('change', function() {
+                const newLocation = this.value;
+                console.log('Location changed to:', newLocation);
+                changeLocation(newLocation);
+            });
+        }
         
         // Set up load more button
         const loadMoreBtn = document.getElementById('loadMoreBtn');

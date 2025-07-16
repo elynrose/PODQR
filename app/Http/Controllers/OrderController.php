@@ -128,11 +128,22 @@ class OrderController extends Controller
         try {
             $design = Design::findOrFail($designId);
             
-            // Focus on USA location for unisex t-shirts
-            $userLocation = 'US';
+            // Get user's location from request, profile, or default to US
+            $userLocation = $request->get('location') ?? 
+                           auth()->user()->country_code ?? 
+                           'US';
             
-            // Debug: Log before API call
-            \Log::info('OrderController: About to fetch T-shirt products from Printful API');
+            // Validate location is supported
+            $supportedLocations = ['US', 'CA', 'GB', 'AU', 'JP'];
+            if (!in_array($userLocation, $supportedLocations)) {
+                $userLocation = 'US'; // Default to US if unsupported
+            }
+            
+            \Log::info('OrderController: Loading products for location', [
+                'design_id' => $designId,
+                'user_location' => $userLocation,
+                'user_id' => auth()->id()
+            ]);
             
             // Get location-compatible products with pagination (optimized for performance)
             $products = $this->printfulService->getLocationCompatibleProducts($userLocation, 15, 0);
@@ -140,6 +151,7 @@ class OrderController extends Controller
             // Debug: Log after API call
             \Log::info('OrderController: Printful API response', [
                 'products_count' => $products->count(),
+                'user_location' => $userLocation,
                 'products' => $products->toArray()
             ]);
 
@@ -1000,8 +1012,17 @@ class OrderController extends Controller
             $designId = $request->input('design_id');
             $design = $designId ? Design::find($designId) : null;
             
-            // Get user's preferred location from profile, fallback to request parameter
-            $userLocation = auth()->user()->country_code ?? $request->get('location', 'US');
+            // Get user's preferred location from request, profile, or default
+            $userLocation = $request->get('location') ?? 
+                           auth()->user()->country_code ?? 
+                           'US';
+            
+            // Validate location is supported
+            $supportedLocations = ['US', 'CA', 'GB', 'AU', 'JP'];
+            if (!in_array($userLocation, $supportedLocations)) {
+                $userLocation = 'US';
+            }
+            
             $offset = $request->input('offset', 0);
             $limit = $request->input('limit', 6); // Smaller batches for faster loading
             
@@ -1024,14 +1045,16 @@ class OrderController extends Controller
 
             \Log::info('OrderController: Loaded more products', [
                 'products_count' => $products->count(),
-                'has_more' => $products->count() >= $limit
+                'has_more' => $products->count() >= $limit,
+                'location' => $userLocation
             ]);
 
             return response()->json([
                 'success' => true,
                 'products' => $products,
                 'has_more' => $products->count() >= $limit,
-                'offset' => $offset + $products->count()
+                'offset' => $offset + $products->count(),
+                'location' => $userLocation
             ]);
 
         } catch (\Exception $e) {
@@ -1046,6 +1069,116 @@ class OrderController extends Controller
                 'products' => []
             ], 500);
         }
+    }
+
+    /**
+     * Change location and reload products
+     */
+    public function changeLocation(Request $request)
+    {
+        try {
+            $designId = $request->input('design_id');
+            $design = $designId ? Design::find($designId) : null;
+            
+            // Get and validate location
+            $userLocation = $request->get('location', 'US');
+            $supportedLocations = ['US', 'CA', 'GB', 'AU', 'JP'];
+            if (!in_array($userLocation, $supportedLocations)) {
+                $userLocation = 'US';
+            }
+            
+            \Log::info('OrderController: Changing location', [
+                'new_location' => $userLocation,
+                'design_id' => $designId,
+                'user_id' => auth()->id()
+            ]);
+
+            // Get location-compatible products
+            $products = $this->printfulService->getLocationCompatibleProducts($userLocation, 15, 0);
+            
+            // Filter by design color if design exists
+            if ($design && $design->color_code) {
+                $products = $products->filter(function ($product) use ($design) {
+                    return in_array($design->color_code, $product['color_codes'] ?? []);
+                });
+            }
+
+            // Extract filter options from new products
+            $types = $products->pluck('type')->unique()->filter(function($type) {
+                return is_string($type);
+            })->values();
+            
+            $sizes = collect();
+            $colors = collect();
+            
+            foreach ($products as $product) {
+                if (isset($product['sizes']) && is_array($product['sizes'])) {
+                    $sizes = $sizes->merge($product['sizes']);
+                }
+                if (isset($product['colors']) && is_array($product['colors'])) {
+                    foreach ($product['colors'] as $color) {
+                        if (is_array($color) && isset($color['color_name']) && is_string($color['color_name'])) {
+                            $colors->push($color['color_name']);
+                        } elseif (is_string($color)) {
+                            $colors->push($color);
+                        }
+                    }
+                }
+            }
+            
+            $sizes = $sizes->unique()->filter(function($size) {
+                return is_string($size);
+            })->values();
+            $colors = $colors->unique()->filter(function($color) {
+                return is_string($color);
+            })->values();
+
+            \Log::info('OrderController: Location change completed', [
+                'location' => $userLocation,
+                'products_count' => $products->count(),
+                'types_count' => $types->count(),
+                'sizes_count' => $sizes->count(),
+                'colors_count' => $colors->count()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'products' => $products,
+                'types' => $types,
+                'sizes' => $sizes,
+                'colors' => $colors,
+                'location' => $userLocation,
+                'location_info' => $this->getLocationInfo($userLocation)
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('OrderController: Error changing location', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to change location',
+                'products' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Get location-specific information
+     */
+    private function getLocationInfo($location)
+    {
+        $locationInfo = [
+            'US' => 'Full product selection available. Most products ship within 3-5 business days.',
+            'CA' => 'Limited product selection. Shipping may take 5-10 business days.',
+            'GB' => 'Good product selection. Shipping may take 7-14 business days.',
+            'AU' => 'Limited product selection. Shipping may take 10-20 business days.',
+            'JP' => 'Good product selection. Shipping may take 7-14 business days.'
+        ];
+        
+        return $locationInfo[$location] ?? 'Product availability may vary by location.';
     }
 
     /**

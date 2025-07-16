@@ -107,6 +107,7 @@ Route::middleware(['auth'])->group(function () {
     // API routes that need session authentication
     Route::get('/api/load-more-products', [OrderController::class, 'loadMoreProducts'])->name('api.load-more-products');
     Route::post('/api/load-more-products', [OrderController::class, 'loadMoreProducts'])->name('orders.load-more-products');
+    Route::post('/api/change-location', [OrderController::class, 'changeLocation'])->name('api.change-location');
     Route::post('/api/calculate-total', [OrderController::class, 'calculateTotal'])->name('api.calculate-total');
     Route::post('/api/sync-products', [OrderController::class, 'syncProducts'])->name('api.sync-products');
     Route::post('/api/validate-product-shipping', [OrderController::class, 'validateProductShipping'])->name('api.validate-product-shipping');
